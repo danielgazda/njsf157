@@ -1,31 +1,42 @@
-#+TITLE: Materiály k přednášce "Fyzika máločásticových jaderných systémů" (NJSF157), ÚČJF MFF UK, zimní semestr 2024/2025
+#+TITLE: Materiály k předmětu „Fyzika máločásticových jaderných systémů“ (NJSF157), ÚČJF MFF UK, zimní semestr 2024/2025
 
 * Literatura (prozatím, odkazy na konrétní kapitoly níže)
 
-- [Glöckle] W. Glöckle, The quantum mechanical few-body problem
-- [Taylor] J. R. Taylor, The quantum theory of nonrelativistic collisions
-- [Newton] R. G. Newton, Scattering theory of waves and particles (celkem rigorózní)
+- [Gl] W. Glöckle, The quantum mechanical few-body problem
+- [Ta] J. R. Taylor, The quantum theory of nonrelativistic collisions
+- [Ne] R. G. Newton, Scattering theory of waves and particles (celkem rigorózní)
 
 * Týden 1
-Úvodní, (předběžný) sylabus (sylabus.pdf)
+
+Úvodní
+
+- (Předběžný) sylabus (sylabus.pdf)
 
 * Týden 2
+
 Máločásticové jaderné systémy - prezentace (t1.pdf)
 
 * Týden 3
+
 Exotické jaderné systémy - prezentace (t2.pdf)
 
 * Týden 4
+
 Základní pojmy teorie rozptylu: Møllerovy vlnové operátory, stacionární rozptylové stavy
-** Poznámky k přednášce: strany 1-5
-** Doma přečíst: kapitolu 1.1 v [Glöckle]
+
+- Poznámky k přednášce: strany 1-5
+- Doma přečíst: kapitolu 1.1 v [Gl]
 
 * Týden 5
+
 Základní pojmy teorie rozptylu (pokrač.): Lippmann-Schwingerova rovnice; rezolventy; elementy T, S, K matice
-** Poznámky k přednášce: strany 5-11
-** Doma přečíst: kapitoly 1.2 - 1.5 v [Glöckle]
+
+- Poznámky k přednášce: strany 5-11
+- Doma přečíst: kapitoly 1.2 - 1.5 v [Gl]
 
 * Týden 6
+
 NN systém: spin, izospin, parciální vlny
-** Poznámky k přednášce: TBA
-** Doma přečíst: kapitoly TBA v [Glöckle]
+
+- Poznámky k přednášce: TBA
+- Doma přečíst: kapitoly TBA v [Gl]
