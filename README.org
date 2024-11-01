@@ -5,6 +5,7 @@
 - [Gl] W. Glöckle, The quantum mechanical few-body problem
 - [Ta] J. R. Taylor, The quantum theory of nonrelativistic collisions
 - [Ne] R. G. Newton, Scattering theory of waves and particles (celkem rigorózní)
+- Ručně psané poznámky (t4_t5_poznamky.pdf)
 
 * Týden 1
 
@@ -14,11 +15,11 @@
 
 * Týden 2
 
-Máločásticové jaderné systémy - prezentace (t1.pdf)
+Máločásticové jaderné systémy - prezentace (t2.prezentace.pdf)
 
 * Týden 3
 
-Exotické jaderné systémy - prezentace (t2.pdf)
+Exotické jaderné systémy - prezentace (t3.prezentace.pdf)
 
 * Týden 4
 
