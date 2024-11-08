@@ -5,7 +5,7 @@
 - [Gl] W. Glöckle, The quantum mechanical few-body problem
 - [Ta] J. R. Taylor, The quantum theory of nonrelativistic collisions
 - [Ne] R. G. Newton, Scattering theory of waves and particles (celkem rigorózní)
-- Ručně psané poznámky (t4_t5_poznamky.pdf)
+- Ručně psané poznámky (t4_t5_t6_poznamky.pdf)
 
 * Týden 1
 
@@ -26,19 +26,26 @@ Exotické jaderné systémy - prezentace (t3.prezentace.pdf)
 
 Základní pojmy teorie rozptylu: Møllerovy vlnové operátory, stacionární rozptylové stavy
 
-- Poznámky k přednášce: strany 1-5
+- Poznámky k přednášce: strany 1 - 5
 - Doma přečíst: kapitolu 1.1 v [Gl]
 
 * Týden 5
 
 Základní pojmy teorie rozptylu (pokrač.): Lippmann-Schwingerova rovnice; rezolventy; elementy T, S, K matice
 
-- Poznámky k přednášce: strany 5-11
+- Poznámky k přednášce: strany 5 - 11
 - Doma přečíst: kapitoly 1.2 - 1.5 v [Gl]
 
 * Týden 6
 
 NN systém: spin, izospin, parciální vlny
 
-- Poznámky k přednášce: TBA
-- Doma přečíst: kapitoly TBA v [Gl]
+- Poznámky k přednášce: strany 12 - 16
+- Doma přečíst: kapitoly 2.1 - 2.4 v [Gl] (+ 7-a, 7-b v [Ta])
+
+* Týden 7
+
+NN systém: spin, izospin, parciální vlny (pokrač.)
+
+- Poznámky k přednášce: 17 - TBA
+- Doma přečíst: kapitoly 2.5 - 2.6 v [Gl]
