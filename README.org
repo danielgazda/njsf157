@@ -66,12 +66,12 @@ Schrödingerova a Lippmannova-Schwingerova rovnice pro NN v parciálních vlnác
 
 *  Týden 10
 
-Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. Separabilní potenciály, delta potenciál, efektivní teorie.
+Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. Separabilní potenciály, delta potenciál v 1D, efektivní teorie.
 
 - Poznámky k přednášce: 30 - 34
 
-*  Týden 10
+*  Týden 11
 
-Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokrač.) Efektivní teorie: delta potenciál, regularizace, renormalizace.
+Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokrač.) Efektivní teorie: delta potenciál 1D -> 3D, regularizace, renormalizace.
 
 - Poznámky k přednášce: 34 - TBA
