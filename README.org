@@ -1,13 +1,13 @@
 #+TITLE: Materiály k předmětu „Fyzika máločásticových jaderných systémů“ (NJSF157), ÚČJF MFF UK, zimní semestr 2024/2025
 
-Poslední úprava: [2024-12-06 Fri]
+Poslední úprava: [2024-12-11 Wed]
 
 * Literatura (prozatím, odkazy na konrétní kapitoly níže)
 
 - [Gl] W. Glöckle, The quantum mechanical few-body problem
 - [Ta] J. R. Taylor, The quantum theory of nonrelativistic collisions
 - [Ne] R. G. Newton, Scattering theory of waves and particles (celkem rigorózní)
-- Ručně psané poznámky (t4-t10_poznamky.pdf)
+- Ručně psané poznámky (t4-t11_poznamky.pdf)
 
 * Týden 1
 
@@ -72,6 +72,16 @@ Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. Separab
 
 *  Týden 11
 
+Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokrač.) Efektivní teorie: delta potenciál v 1D.
+
+- Poznámky k přednášce: 35 - 37
+
+*  Týden 12
+
 Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokrač.) Efektivní teorie: delta potenciál 1D -> 3D, regularizace, renormalizace.
 
-- Poznámky k přednášce: 34 - TBA
+Numerické řešení Schrödingerovy a Lippmannovy-Schwingerovy.
+
+*  Týden 13
+
+Numerické řešení Schrödingerovy a Lippmannovy-Schwingerovy (pokrač.).
