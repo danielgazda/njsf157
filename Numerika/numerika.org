@@ -18,7 +18,7 @@ integrační meze, počet bodů, sešívací poloměry, ...
 rozptyl (fázové posunutí) i vázané stavy. Navíc funkce pro výpočet
 exaktních hodnot pro radiální jámu pro srovnání s numerickými výpočty.
 (Podle [MHJ, kap. 9.2.3], [Ba], zobecnění na vázané kanály např. v
-[Gl, numerov.coupled_channel.pdf])
+[Gl kap. 2.7.1, numerov.coupled_channel.pdf])
 
 *LSE.cpp:* Lippmannova-Schwingerova rovnice v p-reprezentaci - fázové
 posunutí, vázané stavy. (Podle [HT, pouze úvodní kapitoly], [MHJ, kap.
@@ -72,7 +72,7 @@ make get_eigen
 make
 #+end_src
 
-*Python:*
+*Python ekvivalent:*
 
 Numpy, Scipy, SymPy
 
@@ -127,7 +127,7 @@ namespace constants {
 #endif
 #+end_src
 
-*Python:*
+*Python ekvivalent:*
 
 scipy.constants
 
@@ -257,7 +257,7 @@ Matrix discretize(const std::function<double(double,double)> f, const std::vecto
 #endif // MATRIX_HPP
 #+end_src
 
-*Python:*
+*Python ekvivalent:*
 
 numpy, scipy.linalg
 
@@ -331,7 +331,7 @@ Gauss_Legendre_mesh::Gauss_Legendre_mesh (const int N, const double x1, const do
 };
 #+end_src
 
-*Python:*
+*Python ekvivalent:*
 
 numpy.polynomial.legendre.leggauss() a pak je potřeba přeškálovat:
 
@@ -468,7 +468,7 @@ public:
 #endif
 #+end_src
 
-*Python:*
+*Python ekvivalent:*
 
 Pokud vím, tak standardní knihovna pro Numerova není. Diferenciální
 rovnice 2. řádu se ale dá jednoduše převést na soustavu 2 rovnic 1.
@@ -883,7 +883,7 @@ int main () {
 }
 #+end_src
 
-*Python:*
+*Python ekvivalent:*
 
 Besselky - "from scipy.special import spherical_jn, spherical_yn"
 Iverze matice - "Finv = numpy.linalg.inv(F)"
@@ -1038,7 +1038,7 @@ int main () {
 }
 #+end_src
 
-*Python:*
+*Python ekvivalent:*
 Pro řešení ODE: už zmíněná knihovna scipy.integrate.ode
 
 
@@ -1287,17 +1287,17 @@ radial_HO_wave_functions::radial_HO_wave_functions (int n_re, int l_re, double a
 }
 #+end_src
 
-*Python:*
+*Python ekvivalent:*
 
 Jsou v knihovně pro symbolické výpočty SymPy:
 
 #+begin_src python
 from sympy.physics.sho import R_nl
 ...
-R_nl(n, l, 1/nu, p).n()
+R_nl(n, l, 1/nu, p).n() # Pro numerickou hodnotu
 #+end_src
 
-Hodně pomalé - jsou implementované symbolicky.
+Tragicky pomalé - jsou implementované symbolicky.
 
 ** Hlavní program
 
@@ -1520,7 +1520,8 @@ int main () {
 }
 #+end_src
 
-*Python:*
+*Python ekvivalent:*
+
 Vlastní čísla a vektory symetrické matice - scipy.linalg.eigvalsg, scipy.linalg.eigh
 
 
