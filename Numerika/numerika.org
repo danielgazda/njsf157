@@ -1,0 +1,1590 @@
+#+TITLE: Numerika
+
+Všechno je v C++ s minimální závislostí na externích knihovnách.
+Poholdnější by byl Python. U všeho existujícího jsou odkazy na
+ekvivalentní funkce v Pythonu.
+
+Programy jsou pomalé a ne user-friedly. Žádné optimalizace pro lepší
+čitelnost. Spousta věcí je "hardcoded". Základní nastavení je pro
+jednoduchý potenciál - sférickou jámu, která reprodukuje vazbovou
+energii deuteronu (3S0 kanál, žádná tenzorová interakce a vazba na
+3D1 - programy to neumí). V p-reprezentaci se nejprve dělá Fourierka
+potenciálu. Další jednoduchý potenciál je fenomenologický Minnesota,
+který opět reproduduje vazbovou energii deuteronu a další
+pozorovatelné. Každý potenciál potřebuje doladění různých parametrů -
+integrační meze, počet bodů, sešívací poloměry, ...
+
+*TISE.cpp:* Bezčasová Schrödingerova rovnice v x-reprezentaci -
+rozptyl (fázové posunutí) i vázané stavy. Navíc funkce pro výpočet
+exaktních hodnot pro radiální jámu pro srovnání s numerickými výpočty.
+(Podle [MHJ, kap. 9.2.3], [Ba], zobecnění na vázané kanály např. v
+[Gl, numerov.coupled_channel.pdf])
+
+*LSE.cpp:* Lippmannova-Schwingerova rovnice v p-reprezentaci - fázové
+posunutí, vázané stavy. (Podle [HT, pouze úvodní kapitoly], [MHJ, kap.
+4], [Gl, kap. 2.7.2], dodání Coulomba pro nabité systémy (pp):
+Vincent-Phatak.pdf)
+
+*HOdiag.cpp:* Variační metoda pro vázané stavy řešené rozvojem vlnové
+funkce do báze harmonického oscilátoru. (Podle [NCSM])
+
+*VPA.cpp:* Šikovný přímočarý výpočet fázového posunutí (centrální
+lokální potenciál) pomocí "variable-phase approach". (Podle [Ta, kap.
+11-g] a zobecněno pro vyšší parciální vlny - internet)
+
+
+Literatura:
+
+[MHJ] Hjort-Jensen.pdf
+
+[Ba] numerov.Nir_Barnea.pdf
+
+[Ta] Ta.djvu (V materiálech)
+
+[Gl] Gl.pdf (V materiálech)
+
+[HT] Haftel_Tabakhin.pdf Haftel_thesis.pdf
+
+[NCSM] NCSM.pdf
+
+* Externí knihovny / programy
+
+C++ kompilátor, git, make
+
+Jediná potřebná externí knihovna je Eigen3 pro lineární algebru
+(http://eigen.tuxfamily.org/). Je to "header-only" C++ knihovna a není
+třeba nic instalovat a kompilovat (některé funkce jsou k dispozici pouze
+s knihovnami BLAS a LAPACK, ale nepotřebujeme je). Dá se stáhnout
+pomocí (git):
+
+#+begin_src shell
+git clone -b 3.4 git@gitlab.com:libeigen/eigen.git
+#+end_src
+
+(také "make get_eigen"). Bez git-u se musí stáhnout ručně a rozbalit.
+
+Měla by být ale dostupná z repozitářů snad všech linuxových distribucí a MacPorts/Brew. Je potom třeba změnit cestu ke knihovně v souboru Makefile.
+
+Pro kompilaci všeho by pak mělo stačit:
+
+#+begin_src shell
+make get_eigen
+make
+#+end_src
+
+*Python:*
+
+Numpy, Scipy, SymPy
+
+
+* Společné pomocné knihovny
+** Bisekce pro nalezení kořene 1D funkce f (f=0) na intervalu [a,b]
+
+Pomalý iterativní algoritmus. Trochu sofistikovanější verze, kde
+můžeme specifikovat toleranci jak pro funkční hodnotu v místě kořene,
+tak na přesnost kořene mezi iteracemi.
+
+https://en.wikipedia.org/wiki/Bisection_method
+
+#+begin_src C++ :tangle "Programy/bisection.hpp" :main no
+#ifndef BISECTION_H
+#define BISECTION_H
+template <int maxit=100, double ftol=1.0e-16, double xtol=1.0e-16, bool verbose = true>
+double find_root(double a, double b, std::function<double(const double&)> f) {
+  int it {1};
+  double c {}, cprev {};
+  do {
+    cprev = (it==1) ? a : c; // Set it to the middle of the interval as well in the first iteration, it does not matter
+    c = (a+b)/2;
+    if (f(a)*f(c) > 0) {a = c;} else {b = c;}
+    if (verbose) {
+      std::cout << "it=" << it << " xprev=" << cprev << " x=" << c << " f(xprev)=" << f(cprev) << " f(x)=" << f(c) << "\n";
+    }
+    ++it;
+  } while (((std::abs(f(c)) > ftol) || (std::abs(cprev-c) > xtol)) && (it <= maxit));
+  std::cout << "find_root(): " << it-1 << " iteration" << ((it-1>1)?"s":"") << " \n";
+  return c;
+}
+#endif
+#+end_src
+
+Python:
+scipy.optimize https://docs.scipy.org/doc/scipy/reference/optimize.html spousta algoritmů pro hledání kořene (stačí root_scalar())
+
+** Několik konstant
+
+#+begin_src C++ :tangle "Programy/constants.hpp" :main no
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
+
+namespace constants {
+  constexpr double
+  Mp {938.27208816}, // (29) PDG 2024
+    Mn {939.5654205}, // (5) PDG 2024
+    PI {std::numbers::pi_v<double>},
+    hbc {197.3269804}; // MeV fm (approx., PDG)
+}
+#endif
+#+end_src
+
+*Python:*
+
+scipy.constants
+
+** Definice několika potenciálů
+
+#+begin_src C++ :tangle "Programy/potentials.hpp" :main no
+#ifndef POTENTIALS_H
+#define POTENTIALS_H
+
+#include <cmath>
+#include "constants.hpp"
+
+namespace potentials {
+
+  double separableGaussian(const double& pp, const double& p) {
+    // For p',p in fm^{-1}, return v(p',p) in fm^2. For Lambda -> oo, it
+    // should approach zero-range contact interaction.
+    constexpr double gamma {-1}, // fm^2
+      Lambda {500 / constants::hbc}; // Regulator cutoff momentum, 1/fm
+    auto g = [&Lambda] (const double& q)->double{return std::exp(-q*q / (Lambda*Lambda)); };
+    // Sharper cutoff
+    // alpha = 1
+    // g = lambda q: np.exp(-q**(2*alpha) / Lambda**(2*alpha))
+    // g = lambda q: 1 / ((2 * np.pi)**(3/2) * Lambda**3) * np.exp(-q**2 / (2 * Lambda**2)) # g(x;Lambda) -> delta^{3}(\vec{x}) for Lambda -> 0
+    return gamma * g(pp) * g(p);
+  }
+  
+  double separable_Yamaguchi(const double& pp, const double& p) {
+    // For p',p in fm^{-1}, return v(p',p) in fm^2.
+    constexpr double gamma {-1}, // fm^2
+      Lambda {500 / constants::hbc}; // Regulator cutoff momentum in 1/fm
+    auto g = [&Lambda] (const double& q)->double{ return Lambda*Lambda / (q*q + Lambda*Lambda); };
+    return gamma * g(pp) * g(p);
+  }
+
+  double spherical_square_well(const double V0, const double R0, const double r) {
+    return (r<R0) ? V0 : 0.0;
+  }
+
+  double Minnesota(const int& s, const int& t, const double& r){
+    const double
+      rmu1 {1.487},
+      rmu2 {0.639},
+      rmu3 {0.465},
+      VMn1 {200.0},
+      VMn2 {-178.0},
+      VMn3 {-91.85};
+    const double rr {r*r};
+    const double
+      sgns {std::pow(-1,s)},
+      sgnt {std::pow(-1,t)},
+      sgnspt {std::pow(-1,s+t)};
+    return
+      0.5 * VMn1 * std::exp(-rmu1*rr) * (1 - sgnspt)
+      + 0.25 * VMn2 * std::exp(-rmu2*rr) * (1 + (-sgns + sgnt - sgnspt))
+      + 0.25 * VMn3 * std::exp(-rmu3*rr) * (1 + sgns - sgnt - sgnspt);
+  }
+  
+  double MalflietTjon(const double& r) {
+    const double
+      rmu1 {3.11},
+      rmu2 {1.55},
+      VMT1 {1458.05},
+      VMT2 {-578.09};
+    return VMT1 * std::exp(-rmu1*r)/r + VMT2 * std::exp(-rmu2*r)/r;
+  }
+
+  double harmonic_oscillator(const double& m, const double& hbo, const double& r) {
+    using constants::hbc;
+    return 1.0/2 * m * hbo*hbo / (hbc*hbc) * r*r; // in MeV for M, hbo in MeV and r in fm
+  }
+
+}
+#endif
+#+end_src
+
+** Matice
+
+C++ nemá matice -> definujeme svoje. Je lepší rovnou používat
+optimalizovanou knihovnu Eigen. Eigen si ale dobře rozumí s
+std::vector (přes Eigen::Map()).
+
+#+begin_src C++ :tangle "Programy/matrix.hpp" :main no
+#ifndef MATRIX_HPP
+#define MATRIX_HPP
+
+#include <vector>
+#include <ranges>
+#include <algorithm>
+#include <functional>
+
+class Matrix {
+  // Simple matrix class -> use Eigen::Matrix
+public:
+  int rows {}, cols {};
+  std::vector<double> storage {};
+
+  Matrix () {}
+  Matrix (const int r, const int c) : rows {r}, cols {c}, storage(rows*cols, 0.0) {}
+  Matrix (const int d) : Matrix(d, d) {}
+  // Row-wise storage:
+  // double operator() (const int r, const int c) const {return storage.at(c + cols*r);}
+  // double& operator() (const int r, const int c) {return storage.at(c + cols*r);}
+  // Column-wise storage:
+  double operator[] (const int r, const int c) const {return storage.at(r + rows*c);}
+  double& operator[] (const int r, const int c) {return storage.at(r + rows*c);}
+  double operator() (const int r, const int c) const {return storage.at(r + rows*c);}
+  double& operator() (const int r, const int c) {return storage.at(r + rows*c);}
+  // private:
+};
+
+Matrix discretize(const std::function<double(double,double)> f, const std::vector<double> grid) {
+  Matrix df(grid.size());
+  // Needs c++23
+  for (const auto [ipa,pa] : std::views::enumerate(grid)) {
+    for (const auto [ipb,pb] : std::views::enumerate(grid)) {
+      df(ipa,ipb) = f(pa,pb);
+    }
+  }
+  // for (std::vector<double>::size_type ipp {0}; ipp<grid.size(); ++ipp) {
+  //   for (std::vector<double>::size_type ip {0}; ip<grid.size(); ++ip) {
+  //     df(ipp,ip) = f(grid[ipp],grid[ip]);
+  //   }
+  // }
+  return df;
+}
+#endif // MATRIX_HPP
+#+end_src
+
+*Python:*
+
+numpy, scipy.linalg
+
+** Gaussova-Legendreova mřížka (body a váhy) pro numerickou integraci
+
+#+begin_src C++ :tangle "Programy/Gauss_Legendre.hpp" :main no
+#ifndef GAULEG_H
+#define GAULEG_H
+//#include <numbers>
+//#include <cmath>
+#include <vector>
+
+class Gauss_Legendre_mesh {
+  /* Adapted FORTRAN subroutine I got from Petr Navrátil
+     Gauss_Legendre_mesh(N,-1,1) gives the same as numpy.polynomial.legendre.leggauss(N) */
+  public:
+  std::vector<double> x, w; // points and weights
+  Gauss_Legendre_mesh (const int N, const double x1, const double x2);
+  };
+#endif
+#+end_src
+
+#+begin_src C++ :tangle "Programy/Gauss_Legendre.cpp" :main no
+#include <numbers>
+#include <cmath>
+#include <vector>
+#include "Gauss_Legendre.hpp"
+
+Gauss_Legendre_mesh::Gauss_Legendre_mesh (const int N, const double x1, const double x2)
+  : x(N,0), w(N,0)
+{
+  double z1, pp, p3, p2, p1;
+
+  const int m{(N + 1) / 2};
+  const double
+    xm{0.5 * (x2 + x1)},
+    xl{0.5 * (x2 - x1)},
+    pi{std::numbers::pi_v<double>}, // Requires -std=c++20
+    tol{3.0e-14};
+  
+  for (int i {1}; i<=m; ++i) {
+    double z = std::cos(pi * (i - 0.25) / (N + 0.5));
+    do {
+      p1 = 1.0;
+      p2 = 0.0;
+      for (int j{1}; j<=N; ++j) {
+	p3 = p2;
+	p2 = p1;
+	p1 = ((2 * j - 1) * z * p2 - (j - 1) * p3) / j;
+      }
+      pp = N * (z * p1 - p2) / (z * z - 1.0);
+      z1 = z;
+      z = z1 - p1 / pp;
+    } while (std::abs(z1 - z) > tol);
+    // Scaling from [-1,1] to [x1,x2]
+    x.at(i-1) = xm - xl * z;
+    x.at(N+1-(i+1)) = xm + xl * z;
+    w.at(i-1) = 2.0 * xl / ((1.0 - z * z) * pp * pp);
+    w.at(N+1-(i+1)) = w.at(i-1);
+    // TODO
+    // Scaling to infinite interval
+    // Adapt x,w -> t,u for finite:
+    // t = 0.5 * (x + 1) * (b - a) + a
+    // u = w * 0.5 * (b - a)
+    // [-1,1] -> [0,1] -> (-oo,oo)
+    // scale = 100 (?)
+    // pi_over_4 = np.pi / 4
+    // t = scale * np.tan(pi_over_4 * (x + 1))
+    // u = scale * pi_over_4 / np.cos(pi_over_4 * (x + 1))**2 * w
+  }
+};
+#+end_src
+
+*Python:*
+
+numpy.polynomial.legendre.leggauss() a pak je potřeba přeškálovat:
+
+#+begin_src python
+import numpy as np
+
+def Gauss_Legendre_finite_grid(N, a, b):
+    x, w = np.polynomial.legendre.leggauss(N)
+    # Transform x from [-1, 1] to [a, b]
+    t = 0.5 * (x + 1) * (b - a) + a
+    u = w * 0.5 * (b - a)
+    return t, u
+
+def Gauss_Legendre_infinite_grid(N, scale=100):
+    x, w = np.polynomial.legendre.leggauss(N)
+    # Transform x from [-1, 1] to [0, +oo]
+    pi_over_4 = np.pi / 4
+    t = scale * np.tan(pi_over_4 * (x + 1))
+    u = scale * pi_over_4 / np.cos(pi_over_4 * (x + 1))**2 * w
+    return t, u
+#+end_src
+
+
+* Radiální bezčasová Schrödingerova rovnice v x-reprezentaci
+
+Integrace pomocí Numerovovy metody.
+
+** Numerovova metoda pro ODE 2. řádu
+
+#+begin_src C++ :main no :tangle "Programy/numerov.hpp"
+#ifndef NUMEROV_H
+#define NUMEROV_H
+
+#include <iostream>
+#include <functional>
+#include <vector>
+#include <ranges>
+#include <algorithm>
+#include <format>
+#include <cmath>
+
+class Numerov_solver {
+  /*
+    Solve y''(x) + k^2(x) = F(x) on [a,b] with y(a) = alpha, y(b) = beta
+  ,*/
+  // private:
+public:
+  double a, b; // interval [a,b]
+  int N; // number of intervals = numper of points - 1
+  double h; // step size (b-a)/N
+  std::vector<double> grid, dkk, dF; // coordinate grid and discretized k^2(), F()
+  
+  std::vector<double> make_grid(const double a, const double b, const int N) {
+    if (a>=b) {std::cout<<"Numerov_solver: a>=b, abort()\n"; abort();}
+    std::vector<double> grid{};
+    for (int i=0; i<N+1; ++i) {
+      grid.push_back(a+i*(b-a)/N);
+    }
+    return grid;
+  }
+  
+  std::vector<double> discretize(std::function<double(double)> fun) {
+    std::vector<double> dfun;
+    for (const auto& x : grid) {
+      dfun.push_back(fun(x));
+    }
+    return dfun;
+  }
+  
+  inline double step(const double yi, const double yim1,
+		     const double kkim1, const double kki, const double kkip1,
+		     const double Fim1, const double Fi, const double Fip1) {
+    double yip1{
+      1.0/(1.0 + h*h/12.0 * kkip1)*(2 * yi * (1 - 5 * h*h/12 * kki)
+				    - yim1 * (1 + h*h/12 * kkim1)
+				    + h*h/12 * (Fip1 + 10*Fi + Fim1))
+    };
+    return yip1;
+  }
+  
+  // public:
+  Numerov_solver() : a {}, b {}, N {}, h {}, grid {}, dkk {}, dF {} {}
+  
+  Numerov_solver(const double a, const double b, const int N, const std::function<double(double)> kk, const std::function<double(double)> F)
+    : a{a}, b{b},
+      N {N},
+      h {(b-a)/N},
+      grid {make_grid(a,b,N)},
+      dkk {discretize(kk)},
+      dF {discretize(F)}
+  {
+  }
+
+  std::vector<double> integrate_outwards(const double alpha, const double delta) {
+    std::vector<double> y(grid.size(), 0.0);
+    y.at(0) = alpha; // y(a) = alpha
+    y.at(1) = delta; // arbitrary (?) delta \approx f'(a) <= find it by shooting at y(b)=beta
+    for (int i {1}; i<N; ++i) {
+      y.at(i+1) = step(y[i], y[i-1], dkk[i-1], dkk[i], dkk[i+1], dF[i-1], dF[i], dF[i+1]);
+    }
+    return y;
+  }
+
+  std::vector<double> integrate_inwards(const double beta, const double delta) {
+    std::vector<double> y(grid.size(), 0.0);
+    y.at(N) = beta; // y(b)=beta
+    y.at(N-1) = delta; // arbitrary (?) delta \approx f'(a) <= find it by shooting at y(a)=alpha
+    for (int i {N-1}; i>0; --i) {
+      y.at(i-1) = step(y.at(i), y.at(i+1), dkk.at(i+1), dkk.at(i), dkk.at(i-1), dF.at(i+1), dF.at(i), dF.at(i-1));
+    }
+    return y;
+  }
+  
+  void print_grid() {
+    std::cout << "i " << "x(i)" <<"\n";
+    for (const auto& [i,e] : std::views::enumerate(grid))
+      std::cout << i << " " << e << "\n";
+    std::cout << "h " << h << "\n";
+  }
+
+  void print_sol(std::vector<double> y) {
+    std::cout<< "i " << "y(i)" <<"\n";
+    for (const auto& [i,e] : std::views::enumerate(y))
+      std::cout << std::format("{} {}\n", grid[i], e);
+  }
+
+  int grid_index_closest_to(const double& val) {
+    auto absSubtValCompare = [&val] (const auto& a, const auto& b) {return std::abs(a-val) < std::abs(b-val);};
+    auto iterator = std::ranges::min_element(grid, absSubtValCompare);
+    auto position = std::ranges::distance(grid.begin(), iterator);
+    return position;
+  }
+};
+#endif
+#+end_src
+
+*Python:*
+
+Pokud vím, tak standardní knihovna pro Numerova není. Diferenciální
+rovnice 2. řádu se ale dá jednoduše převést na soustavu 2 rovnic 1.
+řádu a pak použít např. scipy.integrate.ode
+(https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.ode.html)
+
+** Hlavní program - vázané stavy i rozptyl
+
+#+name: TISE
+#+begin_src C++ :tangle "Programy/TISE.cpp"
+#include "numerov.hpp"
+#include "bisection.hpp"
+#include "constants.hpp"
+#include "potentials.hpp"
+
+void bound_state () {
+  /*
+    Bound state case, E < 0
+  ,*/
+  using potentials::spherical_square_well;
+  using constants::hbc;
+  auto V = [](const double r){return spherical_square_well(-38.5, 1.93, r);};
+  // auto V = [](const double r){return potentials::Minnesota(1,0,r);}; // Minnesota potential in the S=1, T=0 deuteron channel
+
+  std::vector<double> rgrid, u; // To store the stitched wave function
+
+  auto solve_by_matching = [&V, &rgrid, &u] (const int& NOutw,
+					  const int& NInw,
+					  const double& rCore,
+					  const double& rInf,
+					  const double& rMatch,
+					  const double& Emin,
+					  const double& Emax) {
+
+    auto matching = [&V, &NOutw, &NInw, &rCore, &rInf, &rMatch, &rgrid, &u] (const double& E) {
+      constexpr double M {constants::Mp * constants::Mn / (constants::Mp + constants::Mn)}; // = M*c^2, (reduced) mass in MeV/cc
+      const int l {0}; // S-wave partial wave
+// k^2(x)
+
+      // Define k^2(x)
+      auto kk = [&M, &E, &V, &l] (const double& r) -> double {
+	using constants::hbc;
+	return - l*(l+1)/(r*r) - 2*M*V(r)/(hbc*hbc) + 2*M*E/(hbc*hbc);
+      }; // 1/fm^2
+
+      // Define r.h.s. - F(x)
+      auto zero = [](const double r){return 0.0;};
+
+      // k - E, momentum-energy relation
+      auto k = [&M] (const double E){return std::sqrt(2 * M * E / (hbc*hbc));}; // 1/fm
+
+      // Integrate outwards from rCore to rMatch
+      Numerov_solver nsOutw(rCore, rMatch, NOutw, kk, zero);
+      auto uOutw = nsOutw.integrate_outwards(std::pow(nsOutw.grid[0], l+1), // It should not matter, u(0)=0, asymptotics is u = A*r^(l+1)
+					     std::pow(nsOutw.grid[1], l+1)); // It should not matter
+      // Integrate inwards from rInf to rMatch
+      Numerov_solver nsInw(rMatch, rInf, NInw, kk, zero);
+      auto uInw = nsInw.integrate_inwards(std::exp(-k(-E)*nsInw.grid.back()), // Asymptotics is u ~ A * e^{-k*r}, say A=1, E is negative
+					  std::exp(-k(-E)*nsInw.grid.rbegin()[1]));
+
+      // Require continuity of the log derivative at r = rMatch
+      // u>(rMatch + h) - u<(rMatch - h) = 0
+      double log_derivative_difference {uInw.at(1) - uOutw.rbegin()[1]};
+
+      // Store the stitched solution
+      // Careful here, the rMatch point is there twice (intentionally)
+      rgrid.clear();
+      u.clear();
+      // Fill by outward solution
+      for (const auto& val : uOutw) {u.push_back(val);}
+      for (const auto& val : nsOutw.grid) {rgrid.push_back(val);}
+      // Remove the r=rMatch (last) point
+      u.pop_back();
+      rgrid.pop_back();
+      // Append inward solution
+      for (const auto& val : uInw) {u.push_back(val);}
+      for (const auto& val : nsInw.grid) {rgrid.push_back(val);}
+      
+      return log_derivative_difference;
+    };
+      
+    double Eb = find_root<100, 1.0e-9, 1.0e-9, true>(Emin, Emax, matching);
+    std::cout << "E=" << Eb << "\n";
+  };
+
+  int Noutw = 3000; // Number of points for the outward solution
+  int Ninw = 1000;  // Number of points for the inward solution
+  double rMatch = 40.0; // Matching radius
+  double Emin = -4.0; // Lower bound for energy eigenvalue search
+  double Emax = -1.0; // Upper bound for energy eigenvalue search
+  double rCore = 1.0e-9; // Lower bound for radius. Avoid the centrifugal singularity for l>0
+  double rInf = 50.0; // Upper bound for radius.
+  solve_by_matching(Noutw, Ninw, rCore, rInf, rMatch, Emin, Emax);
+
+  // Print the solution
+  std::cout << "Wave function (r, u(r)):\n";
+  for (const auto& [i,uval] : std::views::enumerate(u)) {
+    std::cout << rgrid[i] << " " << uval << "\n";
+  }
+  std::cout << std::endl;
+}
+
+void analytic_radial_square_well_bound_state () {
+  /*
+    Semi-analytical bound-state solution for radial square well
+  ,*/
+  double M {constants::Mp * constants::Mn / (constants::Mp + constants::Mn)};
+  double V0 {38.5}, // MeV
+    a {1.93}; // fm
+  auto f = [&M, &V0, &a] (const double& E) {
+    using constants::hbc;
+    double k {std::sqrt(2*M * (V0 - std::abs(E)) )/ hbc}; // 1/fm
+    double kappa {std::sqrt((2*M*V0)/(hbc*hbc) - k*k)}; // 1/fm
+    return kappa + k * 1/std::tan(k*a);
+  };
+  double Eanalytical = find_root<100,1.0e-9,1.0e-9,true>(-10.0, -0.1, f);
+  std::cout << "analytic_radial_square_well_bound_state():\n"
+  std::cout << "E analytical = " << Eanalytical << "\n\n";
+}
+
+double tan_phase_shift(const double E, double rCore, double rInf, int N, int l, double approx_r1, double approx_r2) {
+  /*
+    Scattering case, E > 0
+  ,*/
+  if (E<0) {std::cout << "E<0, abort()\n"; abort();}
+
+  const double M {constants::Mp * constants::Mn / (constants::Mp + constants::Mn)};
+  using potentials::spherical_square_well;
+  using constants::hbc;
+  auto V = [](const double r){return spherical_square_well(-38.5, 1.93, r);}; // pheno np 3S1
+  // auto V = [](const double r){return spherical_square_well(-14.3, 2.50, r);}; // pheno np 1S0
+  // auto V = [](const double r){return potentials::Minnesota(1,0, r);}; // Minnesota potential in the S=1, T=0 deuteron channel
+
+  auto kk = [&M, &E, &V, &l] (const double& r) -> double {
+    return - l*(l+1)/(r*r) - 2*M*V(r)/(hbc*hbc) + 2*M*E/(hbc*hbc);
+  }; // 1/fm^2
+  auto k = [&M] (const double E){return std::sqrt(2 * M * E / (hbc*hbc));}; // 1/fm
+  auto zero = [](const double& x){return 0.0;};
+
+  Numerov_solver ns(rCore, rInf, N, kk, zero);
+  // Log-derivative of the asymptotic, r->oo, solution
+  // auto uInf = [](const double k, const double r, const double delta) {
+  //   return std::cos(delta) * k*r * std::sph_bessel(k*r) - std::sin(delta) * k*r * std::sph_neumann(k*r);
+  // }
+  auto u = ns.integrate_outwards(std::pow(ns.grid[0], l+1), std::pow(ns.grid[1], l+1));
+
+  // Find grid values and indices closest to requested r1, r2
+  int i1 {ns.grid_index_closest_to(approx_r1)},
+    i2 {ns.grid_index_closest_to(approx_r2)};
+  double r1 {ns.grid.at(i1)}, r2 {ns.grid.at(i2)};
+  // std::cout << "Matching at r1, r2 = " << r1 << ", " << r2 << "\n";
+
+  double beta {r1*u[i2] / (r2*u[i1])};
+  double tandelta {
+    (beta * std::sph_bessel(l, k(E)*r1) - std::sph_bessel(l, k(E)*r2))
+    / (beta * std::sph_neumann(l, k(E)*r1) - std::sph_neumann(l, k(E)*r2))
+  };
+  return tandelta; // Return tan(phase shift)
+}
+
+double analytic_radial_square_well_scatterring(const double E) {
+  /*
+    Analytical scattering (phase shift) solution for radial square well
+   ,*/
+  const double M {constants::Mp * constants::Mn / (constants::Mp + constants::Mn)};
+  const double V0 {38.5}, a {1.93}; // Pheno np 3S1
+  // const double V0 {14.3}, a {2.50}; // Pheno np 3S1
+  using constants::hbc;
+  double k {
+    std::sqrt(2 * M * E / (hbc*hbc))
+  };
+  double alpha {
+    std::sqrt(2 * M * (E+V0) / (hbc*hbc))
+  };
+  using std::sph_bessel;
+  using std::sph_neumann;
+  const int l {0};
+  double tandelta {
+    (k*sph_bessel(l+1,k*a)*sph_bessel(l,alpha*a) - alpha*sph_bessel(l,k*a)*sph_bessel(l+1,alpha*a))
+    / (k*sph_neumann(l+1,k*a)*sph_bessel(l,alpha*a) - alpha*sph_neumann(l,k*a)*sph_bessel(l+1,alpha*a))
+  };
+  return tandelta;
+}
+  
+
+int main () {
+
+  analytic_radial_square_well_bound_state();
+  bound_state();
+
+  for (double E {0.1}; E<10.0; E+=+0.2){
+    double tandelta = tan_phase_shift(E,      // C-o-m energy in MeV
+				      1.0e-9, // rCore in fm
+				      200.0,  // rInf in fm
+				      10'000,   // N, number of intervals
+				      0,      // l,  S-wave
+				      180,    // approximate r1 radius
+				      190     // approximate r2 radius
+				      );
+    double analytic_tandelta = analytic_radial_square_well_scatterring(E);
+    // std::cout << E << " " << std::atan(tandelta) << "\n";
+    std::cout << E << " " << std::atan(tandelta) << " " << std::atan(analytic_tandelta) << " diff=" << std::atan(tandelta)-std::atan(analytic_tandelta) << "\n";
+    // std::cout << E << " " << std::atan(tandelta) << "\n";
+  }
+
+  return 0;
+}
+#+end_src
+
+
+* Lippmannova-Schwingerova rovnice v p-reprezentaci pro parciální vlny
+
+Naprogramovaný je benchmark pro stejné potenciály jako pro
+Schrödingerovu rovnici -> pomalá Fourierova transformace.
+
+** Řešení LS rovnice (podle [Haftel, Tabakhin])
+
+Pozor na konvence! Oproti přednášce H.-T. používá:
+
+M = 2 * redukovaná hmota (bereme redukovanou hmotu neutron-proton)
+T- a V-matice jsou přeškálované faktorem M = naše 2*m, kde m je reukovaná hmota
+
+#+begin_src C++ :tangle "Programy/LSE.cpp"
+#include <cmath>
+#include <vector>
+#include <ranges>
+#include <algorithm>
+#include <functional>
+// #include <numeric> // provides std::reduce()
+#include <iostream>
+
+#include "Gauss_Legendre.hpp"
+#include "constants.hpp"
+#include "potentials.hpp"
+#include "HO.hpp"
+#include "bisection.hpp"
+#include "matrix.hpp"
+
+#include <Eigen/Dense>
+
+int delta(int i, int j) {return (i==j)? 1 : 0;}
+
+void findSingleChannelBoundState () {
+  // Momentum grid
+  constexpr double
+    kCore {6.0}, // 1/fm
+    kInf {1.0e-9}; // 1/fm
+  constexpr int N {2*200};
+  // Use finite grid
+  Gauss_Legendre_mesh mesh(N, kInf, kCore);
+  std::vector<double> k(mesh.x);
+  std::vector<double> omega(mesh.w);
+
+  // Test with Fourier-transformed Minnesota or square well
+  using constants::Mp, constants::Mn, constants::hbc;
+  double M {2 * Mp * Mn / (Mp + Mn)}; // = 2 * reduced mass! (To be consistent with Haftel-Tabakhin)
+
+  auto Vr = [](const double r){return potentials::spherical_square_well(-38.5, 1.93, r);}; // pheno np 3S1
+  // auto Vr = [](const double r){return potentials::spherical_square_well(-14.3, 2.50, r);}; // pheno np 1S0
+  // auto Vr = [](const double& r)->double{return potentials::Minnesota(1,0,r);};
+
+  // Fourier transform Vr (this is very slow!)
+  constexpr double
+    rCore {1.0e-9}, // fm
+    rInf {22.0}; // fm
+  constexpr int rN {4*200};
+  Gauss_Legendre_mesh rmesh(rN, rCore, rInf);
+  auto Vk = [&Vr, &rmesh, &M](const double& ka, const double& kb)->double{
+    constexpr int l {0}; // s-wave only
+    double I {0.0};
+    for (auto [r,w] : std::views::zip( rmesh.x, rmesh.w)) {
+      I += w * r*r
+	,* std::sph_bessel(l,ka*r)
+	,* Vr(r) / constants::hbc // Vr in MeV -> 1/fm
+	,* std::sph_bessel(l,kb*r) // MeV fm
+	,* M * constants::hbc / (constants::hbc*constants::hbc); // Because of the H.-T. potential partial waves definition
+    }
+    return I;
+  };
+
+  std::cout << "Doing ourier transform of V ...\n";
+  Matrix V = discretize(Vk,k);
+  
+  auto FD = [&V, &k, &omega] (const double& kD) -> Matrix {
+    Matrix X(N);
+    for (int i {0}; i<N; ++i) {
+      for (int j {0}; j<N; ++j) {
+	X(i,j) = delta(i,j) + 2/constants::PI * k[j]*k[j] * omega[j] / (k[j]*k[j] + kD*kD) * V(i,j);
+      }
+    }
+    return X;
+  };
+
+  auto detFD = [&FD] (const double& kD)->double{
+    // Returns det FD(kD)
+    return Eigen::Map<Eigen::MatrixXd>( FD(kD).storage.data(), N, N).determinant();
+  };
+
+  auto kFromE = [&M](const double& E)->double{
+    // Converts energy to momentum
+    return std::sqrt(-E*M/(constants::hbc*constants::hbc));
+  };
+
+  {
+    // Search for bound states by det FD = 0
+    double Emin {-3.0}, Emax {-1.0};
+    double kD = find_root<>(kFromE(Emin), kFromE(Emax), detFD);
+    auto EFromk = [&M](const double& k)->double{
+      return -k*k * (constants::hbc*constants::hbc) / M;
+    };
+    std::cout << "Bound-state E=" << EFromk(kD) << " MeV\n";
+  }
+}
+
+double computeRMatrix(const double& k0) {
+  using constants::PI;
+  constexpr double
+    kCore {6.0}, // 1/fm
+    kInf {0.0}; // 1/fm
+  constexpr int N {150}; // Number of grid points for momentum discretization / integration
+  // Integration grid points and weights
+  // TODO Switch to (0,oo) interval by some transformation
+  Gauss_Legendre_mesh mesh(N, kInf, kCore);
+  auto k = Eigen::Map<Eigen::Array<double,N,1>>(mesh.x.data());
+  auto omega = Eigen::Map<Eigen::Array<double,N,1>>(mesh.w.data());
+  // Append k0 as (N+1)st point
+  Eigen::ArrayXd kp(N+1,1), omegap(N+1,1);
+  kp << k, k0;
+  omegap(Eigen::seq(0,N-1)) = 2/PI * k*k * omega / (k*k - k0*k0);
+  omegap(N) = -2/PI * k0*k0 * (omega / (k*k - k0*k0)).sum();
+  // Potential
+  Eigen::MatrixXd V(N+1,N+1);
+
+  // for (int i : std::views::iota(0,N+1)) {
+  //   for (int j : std::views::iota(0,N+1)) {
+  //     V(i,j) = potentials::separableGaussian(kp(i),kp(j));
+  //   }
+  // }
+  
+  {
+    // Test with Fourier-transformed Minnesota
+    using constants::Mp, constants::Mn, constants::hbc;
+    double M {2*Mp*Mn/(Mp+Mn)}; // = 2 * reduced mass
+    auto Vr = [](const double& r)->double{return potentials::Minnesota(1,0,r);};
+    // Fourier transform Vr
+    // This is very slow
+    const double
+      rCore {1.0e-9}, // fm
+      rInf {22.0}; // fm
+    const int rN {150};
+    Gauss_Legendre_mesh rmesh(rN, rCore, rInf);
+    auto Vk = [&Vr, &rmesh, &M](const double& ka, const double& kb)->double{
+      const int l {0}; // s-wave only
+      double I {0.0};
+      for (auto [r,w] : std::views::zip( rmesh.x, rmesh.w)) {
+	I += w * r*r
+	  ,* std::sph_bessel(l,ka*r)
+	  ,* Vr(r) / constants::hbc // Vr in MeV -> 1/fm
+	  ,* std::sph_bessel(l,kb*r) // MeV fm
+	  ,* M * constants::hbc / (constants::hbc*constants::hbc); // Because of the H.-T. potential partial waves definition
+      }
+      return I;
+    };
+    // Matrix Vktmp = discretize(Vk,kp.data())
+    // V = Eigen::Map<Eigen::MatrixXd>(Vtmp);
+    // or:
+    std::cout << "Doing ourier transform of V ...\n";
+    for (int i : std::views::iota(0,N+1)) {
+      for (int j : std::views::iota(0,N+1)) {
+	V(i,j) = Vk(kp(i),kp(j));
+      }
+    }
+  }
+
+  // Construct the F matrix
+  Eigen::MatrixXd F(N+1,N+1);
+  for (int i : std::views::iota(0,N+1)) {
+    for (int j : std::views::iota(0,N+1)) {
+      F(i,j) = delta(i,j) + omegap(j) * V(i,j);
+    }
+  }
+  // Invert the F matrix
+  Eigen::MatrixXd Finv = F.inverse();
+  // Test the inversion, F * F^{-1} = 1
+  // std::cout << "Tr abs F * Finv = " << (F * Finv).array().abs().matrix().trace() << " (should be " << N+1 << ")\n";
+  std::cout << "Tr (F * Finv) = " << (F * Finv).trace() << " (should be " << N+1 << ")\n";
+  // R-matrix R(k_i, k0)
+  Eigen::ArrayXd R = Finv * V.col(N);
+
+  // On-shell R-matrix element R(k0,k0) is the last element of R
+  return R(R.size()-1);
+}
+
+int main () {
+
+  // Find bound states
+  findSingleChannelBoundState();
+
+  // Compute phase shifts
+  {
+    constexpr double E {0.1}; // C-o-m energy in MeV
+    using constants::Mp;
+    using constants::Mn;
+    using constants::hbc;
+    constexpr double m {Mn*Mp/(Mn+Mp)}; // Reduced mass in MeV
+    constexpr double k0 {std::sqrt(2*m*E)/hbc}; // in 1/fm
+      double R_k0 = computeRMatrix(k0);
+      double tan_delta_k0 = - k0 * R_k0;
+      std::cout << "tan delta(k)=" << tan_delta_k0 << " for E=" << E << " MeV (k=" << k0 << " 1/fm)\n";
+  }
+  return 0;
+}
+#+end_src
+
+*Python:*
+
+Besselky - "from scipy.special import spherical_jn, spherical_yn"
+Iverze matice - "Finv = numpy.linalg.inv(F)"
+Determinant - numpyp.linalg.det(FD)
+
+
+* "Variable-phase approach" (metoda variabilní fáze?)
+
+Velmi užitečná metoda - dostaneme rovnou fázová posunutí řešením
+ODE 1. řádu. Viz např. [Taylor, 11-g]. Existují rošíření pro nelokální
+potenciály, vázané kanály, ...
+
+Řešení pomocí jednoduché 4-bodové Rungeho-Kuttovy metody:
+
+#+name: RK.hpp
+#+begin_src C++ :tangle "Programy/RK.hpp" :main no
+#ifndef RK_HPP
+#define RK_HPP
+
+#include <iostream>
+#include <functional>
+#include <cmath>
+#include <ranges>
+#include <vector>
+
+class RK_solver {
+  /*
+    Solve dy/dx = f(x,y) on [a,b] divided into N intervals (N+1 grid points) given y(a)
+  ,*/
+private:
+  double a {}, b {}, h {};
+  int N {};
+  std::function<double(double,double)> f; //
+  
+  double RK4_step (const double& xn, const double& yn) {
+    double K1 {h * f( xn, yn)};
+    double K2 {h * f( xn + h/2, yn + K1/2)};
+    double K3 {h * f( xn + h/2, yn + K2/2)};
+    double K4 {h * f( xn + h, yn + K3)};
+    double ynp1 = yn + K1/6 + K2/3 + K3/3 + K4/6; // +O(h^5)
+    return ynp1;
+  }
+  
+public:
+  std::vector<double> x {}, y {};
+  RK_solver (const double a, const double b, const int N, std::function<double(double,double)> f, const double y0)
+    : a(a), b(b), h ((b-a)/N), f (f)
+  {
+    if (a>b || a==b) {
+      std::cout << "a, b = " << a << ", " << b << ", abort()\n";
+      abort();}
+    std::cout << "RK4: local error O(" << std::pow(h,5) << "), cummulative error O(" << std::pow(h,4) << ")\n";
+    y.push_back(y0);
+    for (int i=0; i<=N; ++i) {
+      x.push_back(a + i * h);
+      if (i>0) {
+	y.push_back( RK4_step( x[i-1], y[i-1]));
+      }
+    }
+  }
+};
+#endif // RK_HPP
+#+end_src
+
+#+name: VPA.cpp
+#+begin_src C++ :tangle "Programy/VPA.cpp"
+#include <iostream>
+#include <cmath>
+#include <ranges>
+#include <vector>
+
+#include "constants.hpp"
+#include "potentials.hpp"
+#include "RK.hpp"
+
+double phase_shift_vpa (const double& E, const bool& verbose) {
+  /*
+    Solve
+    
+    d/dr \delta_l(k,r) = - V(r) / (k * \hbar^2 / (2 \mu)) * [\cos(\delta_l) \hat{j}_l(kr) - \sin(\delta_l) \hat{n}_l(kr)]^2
+    Taken from https://arxiv.org/pdf/2403.19173, quite a random reference
+
+    Takes energy E>0 in MeV,
+    verbose = true turns on more printing
+  ,*/
+
+  if (E<0) {
+    std::cout << "E=" << E << ", E<0 does not make sense here, abort()";
+    abort();
+  }
+
+  // Define potential
+  auto V = [](const double& r){return potentials::spherical_square_well(-38.5, 1.93, r);}; // Pheno np in 3S1 channel
+  // auto V = [](const double r){return potentials::spherical_square_well(-14.3, 2.50, r);}; // Pheno np in 1S0 channel
+  // auto V = [](const double r) {return potentials::Minnesota(1,0,r);}; // 2H deuteron 3S1
+
+  // Define r.h.s.
+  using constants::Mp;
+  using constants::Mn;
+  double mu {Mn*Mp/(Mn+Mp)}; // Reduced mass
+  double k {std::sqrt(2*mu*E)/constants::hbc}; // momentum 1/fm
+  int l {0}; // s-wave
+  if (verbose) {
+    std::cout << "E=" << E << " MeV\n"
+	      << "k=" << k << " 1/fm\n"
+	      << "mu=" << mu << " MeV\n"
+	      << "l=" << l << "\n";
+  }
+  auto hatj = [](const int l, const double z){return z*std::sph_bessel(l,z);}; // \hat{j}(z)
+  auto hatn = [](const int l, const double z){return z*std::sph_neumann(l,z);}; // \hat{n}(z)
+  auto rhs = [&V, &mu, &k, &hatj, &hatn, &l] (const double r, const double delta) {
+    return -V(r) / (k* constants::hbc*constants::hbc / (2*mu))
+      ,* std::pow((std::cos(delta) * hatj(l,k*r)
+		  - std::sin(delta) * hatn(l,k*r)), 2);
+  };
+
+  // Solve the equation
+  constexpr double rCore {1.0e-16}, rMax {3.0};
+  constexpr int N {1000};
+  constexpr double delta0 {0.0};
+  RK_solver rk(rCore, // a, min radius
+	       rMax,  // b, max radius - Must be larger than the range of the interaction
+	       N,     // N, number of intervals
+	       rhs,   // r.h.s
+	       delta0 // initial value, delta_l(k,r) = 0 for r = 0 and all l,k
+	       );
+  /*
+    We should look at large radius, where the potential vanishes, to
+    extract delta_l(k) from delta_l(r,k). The solution should converge
+    as delta_l(r,k) -> delta_l(k) for r >> range of the interaction.
+  ,*/
+
+  if (verbose) {
+    // Print convergence with r
+    std::cout << "( r, delta_l(r,k)) for convergence analysis:\n";
+    for (auto [r,d] : std::views::zip(rk.x,rk.y)) {
+      std::cout << r << " " << d << "\n";
+    }
+    std::cout << std::endl;
+  }
+  
+  // Return phase shift at the largest radius
+  return rk.y.back();
+}
+
+int main () {
+  constexpr double E {0.1}; // MeV
+  constexpr bool verbose {true};
+  double delta = phase_shift_vpa(E,verbose);
+  std::cout << "Phase shift tan(delta_l(k))=" << std::tan(delta) << " for E=" << E << " MeV" << std::endl;
+  return 0;
+}
+#+end_src
+
+*Python:*
+Pro řešení ODE: už zmíněná knihovna scipy.integrate.ode
+
+
+* Variční metoda, rozvoj vlnové funkce vázaného stavu v HO bázi + diagonalizace
+
+~ vlastně 2-částicový No-core shell model v relativních souřadnicích,
+který jsme nestihli ...
+
+Díky dualitě Hamiltoniánu HO, který má naprosto stejnou strukturu v x-
+a p-reprezentaci, můžeme přímočaře použít pro potenciály v x- a
+p-reprezentaci. V programu je opět volba, že můžeme nejprve udělat
+Fourierovu transformaci potenciálu z x- do p-reprezentace a musíme
+dostat stejné spektrum. (volba -DMOMENTUMSPACE při kompilaci, viz
+Makefile a zdrojový soubor) Tisknou se pouze 3 nejmenší vlastní
+hodnoty matice Hamiltoniánu.
+
+Pro fixní frekvenci HO báze spočte vlastní hodnoty energie v
+závislosti na velikosti báze - ořezaná parametrem Ntotmax - max. počet
+HO kvant. Pro zkonvergovaný výpočet (dostatečně velké Ntotmax) musíme
+vidět nezávislost na frekvenci.
+
+
+** Radiální vlnové funkce harmonického oscilátoru
+
+#+begin_src C++ :tangle "Programy/HO.hpp" :main no
+#ifndef HO_H
+#define HO_H
+
+#include <vector>
+
+class radial_HO_wave_functions {
+
+private:
+  int nmax, lmax, maxgam;
+  double fgamal(const int arg);
+  double fdsq(const int n, const int l);
+  
+public:
+  
+  class u_type {
+  private:
+    int nmax, lmax;
+    std::vector<double> storage;
+  public:
+    u_type ();
+    u_type (const int nmax, const int lmax);
+    double operator[] (const int n, const int l) const;
+    double& operator[] (const int n, const int l);
+    double operator() (const int n, const int l) const;
+    double& operator() (const int n, const int l);
+  } u;
+
+  class ur_type {
+  private:
+    int nmax, lmax;
+    std::vector<double> rgrid;
+    std::vector<double> storage;
+  public:
+    ur_type ();
+    ur_type (const int nmax, const int lmax, std::vector<double> rgrid);
+    double operator[] (const int n, const int l, const int ir) const;
+    double& operator[] (const int n, const int l, const int ir);
+    double operator() (const int n, const int l, const int ir) const;
+    double& operator() (const int n, const int l, const int ir);
+  } ur;
+  
+  radial_HO_wave_functions (const int n_re, const int l_re, const double anu, const std::vector<double> rgrid);
+  radial_HO_wave_functions (const int n_re, const int l_re, const double anu, const double r);
+};
+#endif // HO_H
+#+end_src
+
+#+begin_src C++ :tangle "Programy/HO.cpp" :main no
+#include <numbers>
+#include <cmath>
+//#include <algorithm>
+#include <vector>
+#include <iostream>
+#include <ranges>
+#include "HO.hpp"
+
+double radial_HO_wave_functions::fgamal(const int arg) {
+  switch (arg) {
+  case 2:
+    return 0;
+  case 1:
+    return 0.5*std::log(std::numbers::pi_v<double>);
+  default:
+    return std::log(static_cast<double>(arg)/2 - 1) + fgamal(arg-2);
+  }
+}
+
+double radial_HO_wave_functions::fdsq(const int n, const int l) {
+  return std::sqrt(n*(l+n+0.5));
+}
+
+// void gamasub(const int nmax, const int lmax) {
+//   for (int arg{1}; arg<=maxgam; arg++) {
+//     gamal.at(arg) = fgamal(arg);
+//   }
+//   for (int l{0}; l<=lmax; ++l) {
+//     for (int n{1}; n<=nmax; ++n) {
+//    dsq[n,l] = fdsq(n,l);
+//     };
+//   };
+// }
+ 
+radial_HO_wave_functions::u_type::u_type () : nmax(-1), lmax(-1), storage{} {}
+
+radial_HO_wave_functions::u_type::u_type (const int nmax, const int lmax) : nmax(nmax), lmax(lmax), storage((nmax+1)*(lmax+1), 0.0) {}
+
+double radial_HO_wave_functions::u_type::operator[] (const int n, const int l) const {
+  return storage.at(n+(nmax+1)*l);
+}
+
+double& radial_HO_wave_functions::u_type::operator[] (const int n, const int l) {
+  return storage.at(n+(nmax+1)*l);
+}
+
+double radial_HO_wave_functions::u_type::operator() (const int n, const int l) const {
+  return storage.at(n+(nmax+1)*l);
+}
+
+double& radial_HO_wave_functions::u_type::operator() (const int n, const int l) {
+  return storage.at(n+(nmax+1)*l);
+}
+
+radial_HO_wave_functions::ur_type::ur_type () : nmax(-1), lmax(-1), rgrid{}, storage{} {}
+
+radial_HO_wave_functions::ur_type::ur_type (const int nmax, const int lmax, std::vector<double> rgrid)
+  : nmax(nmax), lmax(lmax), rgrid(rgrid), storage((nmax+1)*(lmax+1)*rgrid.size(), 0.0) {}
+
+double radial_HO_wave_functions::ur_type::operator[] (const int n, const int l, const int ir) const {
+  return storage.at(ir + n*rgrid.size() + l*rgrid.size()*(nmax+1));
+}
+
+double& radial_HO_wave_functions::ur_type::operator[] (const int n, const int l, const int ir) {
+  return storage.at(ir + n*rgrid.size() + l*rgrid.size()*(nmax+1));
+}
+
+double radial_HO_wave_functions::ur_type::operator() (const int n, const int l, const int ir) const {
+  return storage.at(ir + n*rgrid.size() + l*rgrid.size()*(nmax+1));
+}
+double& radial_HO_wave_functions::ur_type::operator() (const int n, const int l, const int ir) {
+  return storage.at(ir + n*rgrid.size() + l*rgrid.size()*(nmax+1));
+}
+
+radial_HO_wave_functions::radial_HO_wave_functions (const int n_re, const int l_re, const double anu, const std::vector<double> rgrid)
+  : nmax(n_re), lmax(l_re), maxgam(2*l_re+5+1),
+    // gamal(maxgam),
+    // dsq(n_re,l_re),
+    u(),
+    ur(n_re,l_re,rgrid)
+{
+  for (const auto& [ir,r] : std::views::enumerate(rgrid)) {
+    // TODO FIX: BAD - the code is just copied from below
+    std::vector<long double> laguer_sav_qp(n_re+1, 0.0l), scale(n_re+1, 1.0l);
+    //gamasub(n_re,l_re);
+    for (int l{0}; l<=l_re; ++l) {
+      double dlanu{std::log(anu)}, zz{anu*r*r};
+      double wavel = 0.25*dlanu - zz/2.0 + (l+1) * (0.5 * dlanu + std::log(r));
+
+      long double guerpq = std::exp(0.5*(std::log(2.0)-fgamal(2*l+3)));
+      // guerpq = std::exp(0.5*(std::log(2.0)-gamal[2*l+3]));
+      laguer_sav_qp.at(0) = guerpq;
+
+      long double zzq = static_cast<long double>(zz);
+      if (n_re>0) { // I adedd this
+	guerpq = std::exp(0.5l*(std::log(2.0l) - fgamal(2*l+5))) * (static_cast<long double>(l) + 1.5l - zzq);
+	// guerpq = std::exp(0.5l*(std::log(2.0l) - gamal[2*l+5])) * (static_cast<long double>(l) + 1.5l - zzq);
+	laguer_sav_qp.at(1) = guerpq;
+      }
+     
+      long double aq = std::exp(0.5l*(std::log(2.0l)-fgamal(2*l+3)));
+      // aq = std::exp(0.5l*(std::log(2.0l)-gamal[2*l+3]));
+   
+      for (int nnn{2}; nnn<=n_re; ++nnn) {
+	if (std::abs(aq)>1.0e+290l || abs(guerpq)>1.0e+290l) {
+	  for (int i{nnn}; i<=n_re; ++i) {scale.at(i) *= 1.0e+290l;}
+	  aq = aq * 1.0e-290l;
+	  guerpq = guerpq * 1.0e-290l;
+	}
+	long double bq = (static_cast<long double>(l+2*nnn) - 0.5l - zzq) / fdsq(nnn,l) * guerpq - fdsq(nnn-1,l) / fdsq(nnn,l) * aq;
+	// bq = (static_cast<long double>(l+2*nnn) - 0.5l - zzq) / dsq[nnn,l] * guerpq - dsq[nnn-1,l] / dsq[nnn,l] * aq;
+	aq = guerpq;
+	guerpq = bq;
+	laguer_sav_qp.at(nnn) = guerpq;
+      };
+     
+      for (int nnn{0}; nnn<=n_re; ++nnn) {
+	guerpq = laguer_sav_qp.at(nnn);
+	long double sig{(guerpq>=0.0l) ? 1.0l : -1.0l};
+	guerpq = std::log(std::abs(guerpq)) + std::log(scale.at(nnn));
+	ur[nnn,l,ir] = sig*std::exp(wavel + guerpq);
+      };
+    } 
+  }
+}
+  
+radial_HO_wave_functions::radial_HO_wave_functions (int n_re, int l_re, double anu, double r)
+  : nmax(n_re), lmax(l_re), maxgam(2*l_re+5+1),
+    // gamal(maxgam),
+    // dsq(n_re,l_re),
+    u(n_re,l_re), ur()
+{
+  std::vector<long double> laguer_sav_qp(n_re+1, 0.0l), scale(n_re+1, 1.0l);
+  //gamasub(n_re,l_re);
+  for (int l{0}; l<=l_re; ++l) {
+    double dlanu{std::log(anu)}, zz{anu*r*r};
+    double wavel = 0.25*dlanu - zz/2.0 + (l+1) * (0.5 * dlanu + std::log(r));
+    
+    long double guerpq = std::exp(0.5*(std::log(2.0)-fgamal(2*l+3)));
+    // guerpq = std::exp(0.5*(std::log(2.0)-gamal[2*l+3]));
+    laguer_sav_qp.at(0) = guerpq;
+
+    long double zzq = static_cast<long double>(zz);
+    if (n_re>0) { // I adedd this
+      guerpq = std::exp(0.5l*(std::log(2.0l) - fgamal(2*l+5))) * (static_cast<long double>(l) + 1.5l - zzq);
+      // guerpq = std::exp(0.5l*(std::log(2.0l) - gamal[2*l+5])) * (static_cast<long double>(l) + 1.5l - zzq);
+      laguer_sav_qp.at(1) = guerpq;
+    }
+     
+    long double aq = std::exp(0.5l*(std::log(2.0l)-fgamal(2*l+3)));
+    // aq = std::exp(0.5l*(std::log(2.0l)-gamal[2*l+3]));
+   
+    for (int nnn{2}; nnn<=n_re; ++nnn) {
+      if (std::abs(aq)>1.0e+290l || abs(guerpq)>1.0e+290l) {
+	for (int i{nnn}; i<=n_re; ++i) {scale.at(i) *= 1.0e+290l;}
+	aq = aq * 1.0e-290l;
+	guerpq = guerpq * 1.0e-290l;
+      }
+      long double bq = (static_cast<long double>(l+2*nnn) - 0.5l - zzq) / fdsq(nnn,l) * guerpq - fdsq(nnn-1,l) / fdsq(nnn,l) * aq;
+      // bq = (static_cast<long double>(l+2*nnn) - 0.5l - zzq) / dsq[nnn,l] * guerpq - dsq[nnn-1,l] / dsq[nnn,l] * aq;
+      aq = guerpq;
+      guerpq = bq;
+      laguer_sav_qp.at(nnn) = guerpq;
+    };
+     
+    for (int nnn{0}; nnn<=n_re; ++nnn) {
+      guerpq = laguer_sav_qp.at(nnn);
+      long double sig{(guerpq>=0.0l) ? 1.0l : -1.0l};
+      guerpq = std::log(std::abs(guerpq)) + std::log(scale.at(nnn));
+      u[nnn,l] = sig*std::exp(wavel + guerpq);
+    };
+  }
+}
+#+end_src
+
+*Python:*
+
+Jsou v knihovně pro symbolické výpočty SymPy:
+
+#+begin_src python
+from sympy.physics.sho import R_nl
+...
+R_nl(n, l, 1/nu, p).n()
+#+end_src
+
+Hodně pomalé - jsou implementované symbolicky.
+
+** Hlavní program
+
+#+begin_src C++ :tangle "Programy/HOdiag.cpp"
+#include <cmath>
+#include <vector>
+#include <ranges>
+#include <algorithm>
+#include <functional>
+#include <iostream>
+
+#include "Gauss_Legendre.hpp"
+#include "constants.hpp"
+#include "potentials.hpp"
+#include "HO.hpp"
+#include "matrix.hpp"
+
+#include <Eigen/Dense>
+
+int delta(int i, int j) {return (i==j)? 1 : 0;}
+
+class HOBasis {
+public:
+  int Nmax {};
+  int dim {};
+  int parity {};
+  // Different storage schemes
+  std::vector<int> n {}, l {};
+  std::vector<std::pair<int,int>> nl{};
+  std::vector<std::tuple<int,int,int>> inl{};
+
+  HOBasis (const int Nmax, const int pi) : Nmax(Nmax), parity(pi) {
+    int ind {0};
+    const int NNmin {(parity==-1) ? 1 : 0};
+    // Check if we have odd Nmax for negative parity
+    if (parity == -1 && Nmax % 2 == 0) {
+      std::cout << "parity = " << parity << ", abort()";
+      abort();
+    }
+    const int dNN {(parity==-1 || parity==1)? 2 : 1}; // Allows to build a basis with mixed parity
+    for (int NN {NNmin}; NN <= Nmax; NN += dNN) {
+      for (int _n {0}; _n<=Nmax/2; ++_n) {
+	for (int _l {0}; _l<=Nmax; ++_l) {
+	  if (_l != 0) continue; // Deuteron without tensor force, L=0 s-wave, no s-d coupling
+	  if (2*_n + _l == NN) {
+	    n.push_back(_n);
+	    l.push_back(_l);
+	    // std::vector<int> _nl {_n,_l};
+	    std::pair<int,int> _nl {_n, _l};
+	    nl.push_back(_nl);
+	    std::tuple<int, int, int> _inl {ind, _n, _l};
+	    inl.push_back(_inl);
+	    ++ind;
+	  }
+	}
+      }
+    }
+    dim = nl.size();
+  }
+  
+  void print() {
+    std::cout << "HO states (idex,n,l):\n";
+    for (auto [i,n,l] : inl) {
+      std::cout << i << ": " << n << " " << l << "\n";
+    }
+  }
+};
+
+void findSingleChannelBoundStateHO(const int& Ntotmax, const double& hbo) {
+
+  // Kinetic energy matrix elements
+  auto T = [&hbo] (const int na, const int nb, const int l)->double{
+    if (na==nb) {
+      return hbo/2 * (2*na + l + 1.5);
+    } else if (na==nb-1) {
+      return hbo/2 * std::sqrt((na + 1)*(na + l + 1.5));
+    } else if (na==nb+1) {
+      return hbo/2 * std::sqrt((nb + 1)*(nb + l + 1.5));
+    } else {
+      return 0.0;
+    }
+  };
+
+  // Construct 2-body HO basis
+  HOBasis sts2b( Ntotmax, +1);
+  std::cout << "Basis dimension = " << sts2b.dim << "\n";
+  // sts2b.print();
+
+  using constants::Mp, constants::Mn, constants::hbc;
+  double M {Mp*Mn/(Mp+Mn)};
+
+#ifdef MOMENTUMSPACE
+  /*
+    For momentum-space potential
+  ,*/
+
+  // Momentum grid
+  double
+    kCore {6.0}, // 1/fm
+    kInf {0.0}; // 1/fm
+  int kN {100};
+  Gauss_Legendre_mesh kmesh(kN, kInf, kCore);
+  auto GLikw = std::views::zip(std::views::iota(0,kN), kmesh.x, kmesh.w);
+  // Oscillator length
+  double bb {M * hbo / (hbc*hbc)}; // In momentum space, b is inverted and there is additional (-1)^n * u_{n,l}(r)
+  std::cout << "HO length scale b = sqrt(M*omega/hbar) = " << std::sqrt(bb) << "\n";
+  radial_HO_wave_functions HOk(Ntotmax/2, Ntotmax, 1/bb, kmesh.x);
+#else
+  /*
+    For coordinate-space potential (default)
+  ,*/
+
+  // Radial coordinate grid
+  const double
+    rCore {1.0e-9}, // fm
+    rInf {22.0}; // fm
+  const int rN {4*200}; // 200 was not enough for square radial well
+  // Use finite grid
+  std::cout << "Integrate, " << rN << " points, [" << rCore << ", " << rInf << "] fm\n";
+  Gauss_Legendre_mesh rmesh(rN, rCore, rInf);
+  auto GLirw = std::views::zip(std::views::iota(0,rN), rmesh.x, rmesh.w);
+
+  // nu = (Ma + Mb) / (Ma * Mb) / hbo * hbarc^2
+  // = b^2, with b the HO length scale
+  double bb  = hbc*hbc / M / hbo; // M in MeV, bb in fm^2
+  std::cout << "HO length scale b = sqrt(hbar/(M*omega)) = " << std::sqrt(bb) << " fm \n";
+  radial_HO_wave_functions HOr(Ntotmax/2, Ntotmax, 1/bb, rmesh.x);
+  // I need the factor (-1)^n * u(n,l,r) in momentum space
+#endif
+
+  auto v = [](const double r){return potentials::spherical_square_well(-38.5, 1.93, r);}; // pheno np 3S1
+  // auto v = [](const double r){return potentials::spherical_square_well(-14.3, 2.50, r);}; // pheno np 1S0
+  // Use Minnesota potential to get deuteron
+  // auto v = [](const double& r){return potentials::Minnesota( 1, 0, r);}; // Minnesota in the deuteron channel
+
+#ifdef MOMENTUMSPACE
+  // Radial Fourier transform of v(r) to integrate in momentum space - testing only
+  // It is very slow, use small Ntotmax
+  const double rCore {1.0e-9}, rInf {22.0};
+  const int rN {200};
+  Gauss_Legendre_mesh rmesh(rN, rCore, rInf);
+  auto FTv = [&v, &rmesh](const double& ka, const double& kb)->double{
+    const int l {0}; // s-wave only
+    double I {0.0};
+    for (auto [r,w] : std::views::zip( rmesh.x, rmesh.w)) {
+      I += w * r*r
+	,* 2/constants::PI
+	,* ka * std::sph_bessel( l, ka*r)
+	,* v(r)
+	,* kb * std::sph_bessel( l, kb*r);
+    }
+    return I;
+  };
+#endif
+
+  // Potential matrix elements in HO basis
+
+  Matrix V(sts2b.dim);
+  for (auto& [ia,na,la] : sts2b.inl) {
+    for (auto& [ib,nb,lb] : sts2b.inl) {
+      if (ib>ia) continue; // Lower triangle only, V must be symmetric
+
+      double I {0.0};
+#ifdef MOMENTUMSPACE
+      // Integrate over the momentum grid
+      for (auto [ikwa,ka,wa] : GLikw) {
+	for (auto [ikwb,kb,wb] : GLikw) {
+	  // u(ipa,na,la)*w(ipa)*dV(ipa,ipb)*w(ipb)*u(ipb,nb,lb) // With discretized V
+	  I += HOk.ur[na,la,ikwa] * wa
+	    ,* FTv(ka,kb)
+	    ,* wb * HOk.ur(nb,lb,ikwb);
+	}
+      }
+      I *= std::pow(-1,na)*std::pow(-1,nb); // Phase factors from the radial wave functions
+#else
+      // Integrate over the coordinate grid
+      for (auto [i,r,w] : GLirw) {
+	I += w
+	  ,* HOr.ur(na,la,i)
+	  ,* v(r)
+	  ,* HOr.ur(nb,lb,i);
+      }
+#endif
+      V(ia,ib) = I;
+      V(ib,ia) = I;
+    }
+  }
+
+  // Hamiltonian matrix
+  Matrix H(sts2b.dim);
+  for (auto& [ia,na,la] : sts2b.inl) {
+    for (auto& [ib,nb,lb] : sts2b.inl) {
+      if (ib>ia) continue; // Lower triangle only
+      double t {(la==lb) ? T(na,nb,la) : 0.0};
+      H(ia,ib) = t + V(ia,ib);
+      H(ib,ia) = H(ia,ib); // H is real and symmetric
+    }
+  }
+
+  // Diagonalize H
+  auto X = Eigen::Map<Eigen::MatrixXd>(H.storage.data(), sts2b.dim, sts2b.dim);
+  Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(X);
+  const int nev {3}; // Number of eigenvalues to print
+  std::cout << "The smallest eigenvalues (" << std::min(sts2b.dim, nev) << ")\n";
+  for (int i : std::views::iota(0,std::min(sts2b.dim,nev))) {
+    std::cout << eigensolver.eigenvalues()(i) << "\n";
+  }
+}
+
+int main () {
+  {
+    double hbo {20.0}; // MeV, hbar omega
+    for (int Ntotmax {20}; Ntotmax<=100; Ntotmax+=4) {
+      std::cout << "Ntotmax=" << Ntotmax << "\n";
+      findSingleChannelBoundStateHO(Ntotmax, hbo);
+      std::cout << std::endl;
+    }
+  }
+  return 0;
+}
+#+end_src
+
+*Python:*
+Vlastní čísla a vektory symetrické matice - scipy.linalg.eigvalsg, scipy.linalg.eigh
+
+
+* Kompilace - Makefile
+
+Je potřeba aktuální verze g++, která podporuje potřebné "funkce" ze
+standardu C++23, "-std=c++23". Testováno s g++ 13 a 14.
+
+#+name: Makefile
+#+begin_src fundamental :tangle "Programy/Makefile"
+# Debian linux
+CPPC = g++-13
+# EIGENLIB = /usr/include/eigen3/
+
+# MacOS, latest version from Macports
+# CPPC = g++-mp-14
+# EIGENLIB = /opt/local/include/eigen3/
+
+EIGENLIB = ./eigen/
+
+CPPFLAGS = -std=c++23 -O2 -Wall
+
+all: TISE.x LSE.x HOdiag.x VPA.x
+
+TISE.o: TISE.cpp numerov.hpp bisection.hpp constants.hpp potentials.hpp
+	$(CPPC) -c $(CPPFLAGS) TISE.cpp
+
+TISE.x: TISE.o
+	$(CPPC) -o TISE.x $(CPPFLAGS) TISE.o
+
+Gauss_Legendre.o: Gauss_Legendre.hpp Gauss_Legendre.cpp
+	$(CPPC) -c $(CPPFLAGS) Gauss_Legendre.cpp
+
+HO.o: HO.hpp HO.cpp
+	$(CPPC) -c $(CPPFLAGS) HO.cpp
+
+LSE.o: LSE.cpp potentials.hpp constants.hpp matrix.hpp
+	$(CPPC) $(CPPFLAGS) -c -I $(EIGENLIB) LSE.cpp
+
+LSE.x: Gauss_Legendre.o HO.o LSE.o
+	$(CPPC) -o LSE.x $(CPPFLAGS) Gauss_Legendre.o HO.o LSE.o
+
+HOdiag.o: HOdiag.cpp potentials.hpp constants.hpp matrix.hpp
+	# $(CPPC) $(CPPFLAGS) -c -I $(EIGENLIB) -DMOMENTUMSPACE HOdiag.cpp
+	$(CPPC) $(CPPFLAGS) -c -I $(EIGENLIB) HOdiag.cpp
+
+HOdiag.x: HOdiag.o Gauss_Legendre.o HO.o
+	$(CPPC) -o HOdiag.x Gauss_Legendre.o HO.o HOdiag.o
+
+VPA.o: VPA.cpp RK.hpp constants.hpp potentials.hpp
+	$(CPPC) -c $(CPPFLAGS) VPA.cpp
+
+VPA.x: VPA.o
+	$(CPPC) -o VPA.x VPA.o
+
+clean:
+	rm Gauss_Legendre.o  HO.o  HOdiag.o  LSE.o  VPA.o  TISE.o
+	rm HOdiag.x  LSE.x  VPA.x  TISE.x
+
+get_eigen:
+	# Download Eigen version 3.4 (tested), not the current "master" branch
+	test -d eigen || git clone -b 3.4 git@gitlab.com:libeigen/eigen.git
+
+remove_eigen:
+	test -d eigen && rm -rf eigen
+#+end_src
+

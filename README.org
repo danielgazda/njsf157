@@ -85,3 +85,12 @@ Numerické řešení Schrödingerovy a Lippmannovy-Schwingerovy.
 *  Týden 13
 
 Numerické řešení Schrödingerovy a Lippmannovy-Schwingerovy (pokrač.).
+
+* Co se nestihlo - literatura
+
+** NN interakce, pionless EFT
+** NN interakce, chirální EFT
+** Systémy s několika nukleony
+Faddeev
+Variační metody
+No-core shell model
