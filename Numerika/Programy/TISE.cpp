@@ -62,8 +62,11 @@ void bound_state () {
       // Find the radial wave-function turning point
       {
 	double uPrev {0.0}, rPrev{0.0};
-	for (auto [rval,uval] : std::views::zip(uOutw,nsOutw.grid)) {
-	  if (uval < uPrev) {std::cout << "r turning =" << rPrev << "\n";}
+	for (auto [rval,uval] : std::views::zip(rgrid,u)) {
+	  if (uval < uPrev) {
+	    std::cout << "r turning =" << rPrev << "\n";
+	    break;
+	  }
 	  uPrev = uval;
 	  rPrev = rval;
 	}
