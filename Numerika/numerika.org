@@ -17,8 +17,10 @@ integrační meze, počet bodů, sešívací poloměry, ...
 *TISE.cpp:* Bezčasová Schrödingerova rovnice v x-reprezentaci -
 rozptyl (fázové posunutí) i vázané stavy. Navíc funkce pro výpočet
 exaktních hodnot pro radiální jámu pro srovnání s numerickými výpočty.
-(Podle [MHJ, kap. 9.2.3], [Ba], zobecnění na vázané kanály např. v
-[Gl kap. 2.7.1, numerov.coupled_channel.pdf])
+*Pozor: Myslím, že je tam problém se sešíváním pro hledání vázaných
+stavů. Berte s velkou rezervou, než to odstraním.* (Podle [MHJ, kap.
+9.2.3], [Ba], zobecnění na vázané kanály např. v [Gl kap. 2.7.1,
+numerov.coupled_channel.pdf])
 
 *LSE.cpp:* Lippmannova-Schwingerova rovnice v p-reprezentaci - fázové
 posunutí, vázané stavy. (Podle [HT, pouze úvodní kapitoly], [MHJ, kap.
