@@ -7,7 +7,7 @@ ekvivalentní funkce v Pythonu.
 Programy jsou pomalé a ne user-friedly. Žádné optimalizace pro lepší
 čitelnost. Spousta věcí je "hardcoded". Základní nastavení je pro
 jednoduchý potenciál - sférickou jámu, která reprodukuje vazbovou
-energii deuteronu (3S0 kanál, žádná tenzorová interakce a vazba na
+energii deuteronu (3S1 kanál, žádná tenzorová interakce a vazba na
 3D1 - programy to neumí). V p-reprezentaci se nejprve dělá Fourierka
 potenciálu. Další jednoduchý potenciál je fenomenologický Minnesota,
 který opět reproduduje vazbovou energii deuteronu a další
