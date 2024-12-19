@@ -517,7 +517,7 @@ void bound_state () {
       // Define r.h.s. - F(x)
       auto zero = [](const double r){return 0.0;};
 
-      // k - E, momentum-energy relation
+      // k - E, momentum<-energy relation
       auto k = [&M] (const double E){return std::sqrt(2 * M * E / (hbc*hbc));}; // 1/fm
 
       // Integrate outwards from rCore to rMatch
@@ -540,6 +540,15 @@ void bound_state () {
       // Fill by outward solution
       for (const auto& val : uOutw) {u.push_back(val);}
       for (const auto& val : nsOutw.grid) {rgrid.push_back(val);}
+      // Find the radial wave-function turning point
+      {
+	double uPrev {0.0}, rPrev{0.0};
+	for (auto [rval,uval] : std::views::zip(uOutw,nsOutw.grid)) {
+	  if (uval < uPrev) {std::cout << "r turning =" << rPrev << "\n";}
+	  uPrev = uval;
+	  rPrev = rval;
+	}
+      }
       // Remove the r=rMatch (last) point
       u.pop_back();
       rgrid.pop_back();
@@ -585,7 +594,7 @@ void analytic_radial_square_well_bound_state () {
     return kappa + k * 1/std::tan(k*a);
   };
   double Eanalytical = find_root<100,1.0e-9,1.0e-9,true>(-10.0, -0.1, f);
-  std::cout << "analytic_radial_square_well_bound_state():\n"
+  std::cout << "analytic_radial_square_well_bound_state():\n";
   std::cout << "E analytical = " << Eanalytical << "\n\n";
 }
 
