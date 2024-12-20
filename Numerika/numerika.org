@@ -17,10 +17,8 @@ integrační meze, počet bodů, sešívací poloměry, ...
 *TISE.cpp:* Bezčasová Schrödingerova rovnice v x-reprezentaci -
 rozptyl (fázové posunutí) i vázané stavy. Navíc funkce pro výpočet
 exaktních hodnot pro radiální jámu pro srovnání s numerickými výpočty.
-*Pozor: Myslím, že je tam problém se sešíváním pro hledání vázaných
-stavů. Berte s velkou rezervou, než to odstraním.* (Podle [MHJ, kap.
-9.2.3], [Ba], zobecnění na vázané kanály např. v [Gl kap. 2.7.1,
-numerov.coupled_channel.pdf])
+(Podle [MHJ, kap. 9.2.3], [Ba], zobecnění na vázané kanály např. v [Gl
+kap. 2.7.1, numerov.coupled_channel.pdf])
 
 *LSE.cpp:* Lippmannova-Schwingerova rovnice v p-reprezentaci - fázové
 posunutí, vázané stavy. (Podle [HT, pouze úvodní kapitoly], [MHJ, kap.
@@ -489,23 +487,26 @@ rovnice 2. řádu se ale dá jednoduše převést na soustavu 2 rovnic 1.
 void bound_state () {
   /*
     Bound state case, E < 0
+    
+    Simplified solution without matching - eigenvalue search by
+    shooting at u(rCore)=rCore^{l+1} from rInf or
+    u(rInf)=\exp{-\sqrt{2M(-E)}rInf} from rCore. Both seem to work
+    fine.
   ,*/
   using potentials::spherical_square_well;
   using constants::hbc;
   auto V = [](const double r){return spherical_square_well(-38.5, 1.93, r);};
   // auto V = [](const double r){return potentials::Minnesota(1,0,r);}; // Minnesota potential in the S=1, T=0 deuteron channel
 
-  std::vector<double> rgrid, u; // To store the stitched wave function
+  std::vector<double> rgrid, u; // To store the (reduced) radial wave function
 
-  auto solve_by_matching = [&V, &rgrid, &u] (const int& NOutw,
-					  const int& NInw,
-					  const double& rCore,
-					  const double& rInf,
-					  const double& rMatch,
-					  const double& Emin,
-					  const double& Emax) {
+  auto solve_by_shooting = [&V, &rgrid, &u] (const int& N,
+					     const double& rCore,
+					     const double& rInf,
+					     const double& Emin,
+					     const double& Emax) {
 
-    auto matching = [&V, &NOutw, &NInw, &rCore, &rInf, &rMatch, &rgrid, &u] (const double& E) {
+    auto shooting = [&V, &N, &rCore, &rInf, &rgrid, &u] (const double& E) {
       constexpr double M {constants::Mp * constants::Mn / (constants::Mp + constants::Mn)}; // = M*c^2, (reduced) mass in MeV/cc
       const int l {0}; // S-wave partial wave
 // k^2(x)
@@ -522,60 +523,43 @@ void bound_state () {
       // k - E, momentum<-energy relation
       auto k = [&M] (const double E){return std::sqrt(2 * M * E / (hbc*hbc));}; // 1/fm
 
-      // Integrate outwards from rCore to rMatch
-      Numerov_solver nsOutw(rCore, rMatch, NOutw, kk, zero);
+      // Integrate outwards from rCore to rInf
+      Numerov_solver nsOutw(rCore, rInf, N, kk, zero);
       auto uOutw = nsOutw.integrate_outwards(std::pow(nsOutw.grid[0], l+1), // It should not matter, u(0)=0, asymptotics is u = A*r^(l+1)
 					     std::pow(nsOutw.grid[1], l+1)); // It should not matter
-      // Integrate inwards from rInf to rMatch
-      Numerov_solver nsInw(rMatch, rInf, NInw, kk, zero);
-      auto uInw = nsInw.integrate_inwards(std::exp(-k(-E)*nsInw.grid.back()), // Asymptotics is u ~ A * e^{-k*r}, say A=1, E is negative
-					  std::exp(-k(-E)*nsInw.grid.rbegin()[1]));
+      // Integrate inwards from rInf to rCore
+      // Numerov_solver nsInw(rCore, rInf, N, kk, zero);
+      // auto uInw = nsInw.integrate_inwards(std::exp(-k(-E)*nsInw.grid.back()), // Asymptotics is u ~ A * e^{-k*r}, say A=1, E is negative
+      // 					  std::exp(-k(-E)*nsInw.grid.rbegin()[1]));
 
-      // Require continuity of the log derivative at r = rMatch
-      // u>(rMatch + h) - u<(rMatch - h) = 0
-      double log_derivative_difference {uInw.at(1) - uOutw.rbegin()[1]};
+      
+      // double u_rCore {uInw.at(0)};
+      double u_rInf {uOutw.rbegin()[1]};
 
-      // Store the stitched solution
-      // Careful here, the rMatch point is there twice (intentionally)
+      // Store the solution
       rgrid.clear();
       u.clear();
-      // Fill by outward solution
+      // Fill by the outward solution
       for (const auto& val : uOutw) {u.push_back(val);}
       for (const auto& val : nsOutw.grid) {rgrid.push_back(val);}
-      // Find the radial wave-function turning point
-      {
-	double uPrev {0.0}, rPrev{0.0};
-	for (auto [rval,uval] : std::views::zip(rgrid,u)) {
-	  if (uval < uPrev) {
-	    std::cout << "r turning =" << rPrev << "\n";
-	    break;
-	  }
-	  uPrev = uval;
-	  rPrev = rval;
-	}
-      }
-      // Remove the r=rMatch (last) point
-      u.pop_back();
-      rgrid.pop_back();
-      // Append inward solution
-      for (const auto& val : uInw) {u.push_back(val);}
-      for (const auto& val : nsInw.grid) {rgrid.push_back(val);}
+      // Fill by the inward solution
+      // for (const auto& val : uInw) {u.push_back(val);}
+      // for (const auto& val : nsInw.grid) {rgrid.push_back(val);}
       
-      return log_derivative_difference;
+      // return u_rCore - std::pow(rCore,l+1);
+      return u_rInf - std::exp(-k(-E)*rInf);
     };
       
-    double Eb = find_root<100, 1.0e-9, 1.0e-9, true>(Emin, Emax, matching);
+    double Eb = find_root<100, 1.0e-9, 1.0e-9, true>(Emin, Emax, shooting);
     std::cout << "E=" << Eb << "\n";
   };
 
-  int Noutw = 3000; // Number of points for the outward solution
-  int Ninw = 1000;  // Number of points for the inward solution
-  double rMatch = 40.0; // Matching radius
+  int N = 4000; // Number of points for solution
   double Emin = -4.0; // Lower bound for energy eigenvalue search
   double Emax = -1.0; // Upper bound for energy eigenvalue search
   double rCore = 1.0e-9; // Lower bound for radius. Avoid the centrifugal singularity for l>0
-  double rInf = 50.0; // Upper bound for radius.
-  solve_by_matching(Noutw, Ninw, rCore, rInf, rMatch, Emin, Emax);
+  double rInf = 22.0; // Upper bound for radius.
+  solve_by_shooting(N, rCore, rInf, Emin, Emax);
 
   // Print the solution
   std::cout << "Wave function (r, u(r)):\n";
