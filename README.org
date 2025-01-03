@@ -7,7 +7,7 @@ Poslední úprava: [2024-12-11 Wed]
 - [Gl] W. Glöckle, The quantum mechanical few-body problem
 - [Ta] J. R. Taylor, The quantum theory of nonrelativistic collisions
 - [Ne] R. G. Newton, Scattering theory of waves and particles (celkem rigorózní)
-- Ručně psané poznámky (t4-t11_poznamky.pdf)
+- Ručně psané poznámky (t4-t12_poznamky.pdf)
 
 * Týden 1
 
@@ -78,19 +78,22 @@ Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokra�
 
 *  Týden 12
 
-Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokrač.) Efektivní teorie: delta potenciál 1D -> 3D, regularizace, renormalizace.
+Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokrač.)
 
-Numerické řešení Schrödingerovy a Lippmannovy-Schwingerovy.
+- Efektivní teorie: delta potenciál 1D -> 3D, regularizace, renormalizace.
+- Numerické řešení Lippmannovy-Schwingerovy rovnice v p-reprezentaci.
+- Poznámky k přednášce: 38 - 42; článek Haftel & Tabakhin; složka Numerika
 
-*  Týden 13
+* Týden 13
 
-Numerické řešení Schrödingerovy a Lippmannovy-Schwingerovy (pokrač.).
+Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokrač.)
+
+(?) Numerické řešení Schrödingerovy rovnice v x-reprezentaci.
 
 * Co se nestihlo - literatura
 
-** NN interakce, pionless EFT
-** NN interakce, chirální EFT
+** (TBA) NN interakce, pionless EFT
+** (TBA) NN interakce, chirální EFT
 ** Systémy s několika nukleony
-Faddeev
-Variační metody
-No-core shell model
+- Rozptyl: Faddeev a Faddeev-Yakubovsky [Gl, kap. 3 a 4]
+- Variační metody pro vázané stavy: No-core shell model, SVM [NCSM.pdf, Barnea.pdf]
