@@ -10,7 +10,13 @@ EIGENLIB = ./eigen/
 
 CPPFLAGS = -std=c++23 -O2 -Wall
 
-all: TISE.x LSE.x HOdiag.x VPA.x
+all: TISE.x TISE.min.x LSE.x HOdiag.x VPA.x
+
+TISE.min.o: TISE.min.cpp numerov.hpp bisection.hpp constants.hpp potentials.hpp
+	$(CPPC) -c $(CPPFLAGS) -I$(EIGENLIB) -I/Users/daniel/mfflect/optimlib/optim/header_only_version/ TISE.min.cpp
+
+TISE.min.x: TISE.min.o
+	$(CPPC) -o TISE.min.x $(CPPFLAGS) TISE.min.o
 
 TISE.o: TISE.cpp numerov.hpp bisection.hpp constants.hpp potentials.hpp
 	$(CPPC) -c $(CPPFLAGS) TISE.cpp

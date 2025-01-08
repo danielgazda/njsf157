@@ -5,10 +5,11 @@
 
 void bound_state () {
   /*
-    Bound state case, E < 0
+    Bound-state case, E < 0
     
     Simplified solution without matching - eigenvalue search by
-    shooting at u(0)=0 from rInf.
+    shooting at u(0)=0 from rInf. We can also shoot from u(0) at
+    u(rInf) \approx 0.
   */
   using potentials::spherical_square_well;
   using constants::hbc;
