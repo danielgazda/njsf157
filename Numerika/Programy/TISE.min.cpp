@@ -17,7 +17,7 @@ void bound_state () {
   */
   using potentials::spherical_square_well;
   using constants::hbc;
-  auto V = [](const double x){return spherical_square_well(-38.5, 1.93, r);};
+  auto V = [](const double x){return spherical_square_well(-38.5, 1.93, x);};
   // auto V = [](const double x){return potentials::Minnesota(1,0,r);}; // Minnesota potential in the S=1, T=0 deuteron channel
 
   std::vector<double> xgrid, u; // To store the (reduced) radial wave function

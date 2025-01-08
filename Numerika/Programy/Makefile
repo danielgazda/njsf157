@@ -1,16 +1,22 @@
 # Debian linux
-CPPC = g++-13
+# CPPC = g++-13
 # EIGENLIB = /usr/include/eigen3/
 
 # MacOS, latest version from Macports
-# CPPC = g++-mp-14
-# EIGENLIB = /opt/local/include/eigen3/
+CPPC = g++-mp-14
+EIGENLIB = /opt/local/include/eigen3/
 
-EIGENLIB = ./eigen/
+# EIGENLIB = ./eigen/
 
 CPPFLAGS = -std=c++23 -O2 -Wall
 
-all: TISE.x TISE.min.x LSE.x HOdiag.x VPA.x
+all: TISE.x LSE.x HOdiag.x VPA.x
+
+TISE.match.o: TISE.match.cpp numerov.hpp bisection.hpp constants.hpp potentials.hpp
+	$(CPPC) -c $(CPPFLAGS) -I$(EIGENLIB) -I/Users/daniel/mfflect/optimlib/optim/header_only_version/ TISE.match.cpp
+
+TISE.match.x: TISE.match.o
+	$(CPPC) -o TISE.match.x $(CPPFLAGS) TISE.match.o
 
 TISE.min.o: TISE.min.cpp numerov.hpp bisection.hpp constants.hpp potentials.hpp
 	$(CPPC) -c $(CPPFLAGS) -I$(EIGENLIB) -I/Users/daniel/mfflect/optimlib/optim/header_only_version/ TISE.min.cpp
