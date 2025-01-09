@@ -1,13 +1,13 @@
 #+TITLE: Materiály k předmětu „Fyzika máločásticových jaderných systémů“ (NJSF157), ÚČJF MFF UK, zimní semestr 2024/2025
 
-Poslední úprava: [2024-12-11 Wed]
+Poslední úprava: [2025-01-09 Thu]
 
 * Literatura (prozatím, odkazy na konrétní kapitoly níže)
 
 - [Gl] W. Glöckle, The quantum mechanical few-body problem
 - [Ta] J. R. Taylor, The quantum theory of nonrelativistic collisions
 - [Ne] R. G. Newton, Scattering theory of waves and particles (celkem rigorózní)
-- Ručně psané poznámky (t4-t12_poznamky.pdf)
+- Ručně psané poznámky (t4-t13_poznamky.pdf)
 
 * Týden 1
 
@@ -58,25 +58,25 @@ NN systém: spin, izospin, parciální vlny (pokrač.)
 - Poznámky k přednášce: 21 - 25
 - 
 
-*  Týden 9
+* Týden 9
 
 Schrödingerova a Lippmannova-Schwingerova rovnice pro NN v parciálních vlnách. Potenciály v souřadnicové a impulsové reprezentaci, lokální/nelokální. Bornova/Neumannova řada pro T operátor.
 
 - Poznámky k přednášce: 26 - 29
 
-*  Týden 10
+* Týden 10
 
 Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. Separabilní potenciály, delta potenciál v 1D, efektivní teorie.
 
 - Poznámky k přednášce: 30 - 34
 
-*  Týden 11
+* Týden 11
 
 Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokrač.) Efektivní teorie: delta potenciál v 1D.
 
 - Poznámky k přednášce: 35 - 37
 
-*  Týden 12
+* Týden 12
 
 Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokrač.)
 
@@ -88,7 +88,7 @@ Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokra�
 
 Příklady řešení Schrödingerovy a Lippmannovy-Schwingerovy rovnice. (pokrač.)
 
-(?) Numerické řešení Schrödingerovy rovnice v x-reprezentaci.
+Numerické řešení Schrödingerovy rovnice v x-reprezentaci.
 
 * Co se nestihlo - literatura
 
