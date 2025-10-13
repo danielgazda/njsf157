@@ -1,8 +1,8 @@
 #+TITLE: Materiály k předmětu „Fyzika máločásticových jaderných systémů“ (NJSF157), ÚČJF MFF UK, zimní semestr 2024/2025
 
-Poslední úprava: [2025-01-09 Thu]
+Poslední úprava: [2025-10-13 Mon]
 
-* Literatura (prozatím, odkazy na konrétní kapitoly níže)
+* Literatura (odkazy na konrétní kapitoly níže)
 
 - [Gl] W. Glöckle, The quantum mechanical few-body problem
 - [Ta] J. R. Taylor, The quantum theory of nonrelativistic collisions
@@ -92,9 +92,9 @@ Numerické řešení Schrödingerovy rovnice v x-reprezentaci.
 
 * Co se nestihlo - literatura
 
-** (TBA) NN interakce, pionless EFT
+** (TBA) NN interakce, „pionless EFT“
 - https://arxiv.org/abs/nucl-th/9706029
 ** (TBA) NN interakce, chirální EFT
 ** Systémy s několika nukleony
-- Rozptyl: Faddeev a Faddeev-Yakubovsky [Gl, kap. 3 a 4]
-- Variační metody pro vázané stavy: No-core shell model, SVM [NCSM.pdf, Barnea.pdf]
+- Rozptyl + vázané stavy: Faddeev a Faddeev-Yakubovsky [Gl, kap. 3 a 4]
+- Variační metody pro vázané stavy: No-core shell model (NCSM), Stochastic Variational Method (SVM) [NCSM.pdf, Barnea.pdf]
