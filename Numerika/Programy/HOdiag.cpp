@@ -140,7 +140,7 @@ void findSingleChannelBoundStateHO(const int& Ntotmax, const double& hbo) {
     double I {0.0};
     for (auto [r,w] : std::views::zip( rmesh.x, rmesh.w)) {
       I += w * r*r
-	* 2/constants::PI
+	* 2/constants::pi
 	* ka * std::sph_bessel( l, ka*r)
 	* v(r)
 	* kb * std::sph_bessel( l, kb*r);

@@ -5,11 +5,10 @@
 
 void bound_state () {
   /*
-    Bound-state case, E < 0
+    Bound state case, E < 0
     
     Simplified solution without matching - eigenvalue search by
-    shooting at u(0)=0 from rInf. We can also shoot from u(0) at
-    u(rInf) \approx 0.
+    shooting at u(0)=0 from rInf.
   */
   using potentials::spherical_square_well;
   using constants::hbc;
@@ -80,6 +79,7 @@ void bound_state () {
 void analytic_radial_square_well_bound_state () {
   /*
     Semi-analytical bound-state solution for radial square well
+    S-waves only
   */
   double M {constants::Mp * constants::Mn / (constants::Mp + constants::Mn)};
   double V0 {38.5}, // MeV

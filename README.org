@@ -93,6 +93,7 @@ Numerické řešení Schrödingerovy rovnice v x-reprezentaci.
 * Co se nestihlo - literatura
 
 ** (TBA) NN interakce, pionless EFT
+- https://arxiv.org/abs/nucl-th/9706029
 ** (TBA) NN interakce, chirální EFT
 ** Systémy s několika nukleony
 - Rozptyl: Faddeev a Faddeev-Yakubovsky [Gl, kap. 3 a 4]

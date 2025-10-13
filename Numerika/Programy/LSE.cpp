@@ -62,7 +62,7 @@ void findSingleChannelBoundState () {
     Matrix X(N);
     for (int i {0}; i<N; ++i) {
       for (int j {0}; j<N; ++j) {
-	X(i,j) = delta(i,j) + 2/constants::PI * k[j]*k[j] * omega[j] / (k[j]*k[j] + kD*kD) * V(i,j);
+	X(i,j) = delta(i,j) + 2/constants::pi * k[j]*k[j] * omega[j] / (k[j]*k[j] + kD*kD) * V(i,j);
       }
     }
     return X;
@@ -90,7 +90,7 @@ void findSingleChannelBoundState () {
 }
 
 double computeRMatrix(const double& k0) {
-  using constants::PI;
+  using constants::pi;
   constexpr double
     kCore {6.0}, // 1/fm
     kInf {0.0}; // 1/fm
@@ -103,8 +103,8 @@ double computeRMatrix(const double& k0) {
   // Append k0 as (N+1)st point
   Eigen::ArrayXd kp(N+1,1), omegap(N+1,1);
   kp << k, k0;
-  omegap(Eigen::seq(0,N-1)) = 2/PI * k*k * omega / (k*k - k0*k0);
-  omegap(N) = -2/PI * k0*k0 * (omega / (k*k - k0*k0)).sum();
+  omegap(Eigen::seq(0,N-1)) = 2/pi * k*k * omega / (k*k - k0*k0);
+  omegap(N) = -2/pi * k0*k0 * (omega / (k*k - k0*k0)).sum();
   // Potential
   Eigen::MatrixXd V(N+1,N+1);
 
