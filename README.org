@@ -1,6 +1,6 @@
 #+TITLE: Materiály k předmětu „Fyzika máločásticových jaderných systémů“ (NJSF157), ÚČJF MFF UK, zimní semestr 2024/2025
 
-Poslední úprava: [2025-10-13 Mon]
+Poslední úprava: [2025-10-14 Tue]
 
 * Literatura (odkazy na konrétní kapitoly níže)
 
@@ -18,11 +18,11 @@ Poslední úprava: [2025-10-13 Mon]
 
 * Týden 2
 
-Máločásticové jaderné systémy - prezentace (t2.prezentace.pdf)
+Máločásticové jaderné systémy - prezentace (t2_prezentace.pdf)
 
 * Týden 3
 
-Exotické jaderné systémy - prezentace (t3.prezentace.pdf)
+Exotické jaderné systémy - prezentace (t3_prezentace.pdf)
 
 * Týden 4
 
