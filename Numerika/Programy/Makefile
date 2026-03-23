@@ -1,12 +1,13 @@
 # Debian linux
-CPPC = g++-13
-# EIGENLIB = /usr/include/eigen3/
+# Tested with g++ >= g++-13
+CPPC = g++
+EIGENLIB = /usr/include/eigen3/
 
-# MacOS, latest version from Macports
+# MacOS, g++ from Macports
 # CPPC = g++-mp-14
 # EIGENLIB = /opt/local/include/eigen3/
 
-EIGENLIB = ./eigen/
+# EIGENLIB = ./eigen/
 
 CPPFLAGS = -std=c++23 -O2 -Wall
 

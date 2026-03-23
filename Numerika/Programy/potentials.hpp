@@ -59,6 +59,24 @@ namespace potentials {
     return VMT1 * std::exp(-rmu1*r)/r + VMT2 * std::exp(-rmu2*r)/r;
   }
 
+  double MalflietTjon_I (double r) {
+  constexpr double
+    rmu1 {3.11},
+    rmu2 {1.55},
+    VMT1 {1458.05},
+    VMT2 {-520.94};
+  return VMT1 * std::exp(-rmu1*r)/r + VMT2 * std::exp(-rmu2*r)/r;
+}
+
+double MalflietTjon_III (double r) {
+  constexpr double
+    rmu1 {3.11},
+    rmu2 {1.55},
+    VMT1 {1458.05},
+    VMT2 {-635.392876888};
+  return VMT1 * std::exp(-rmu1*r)/r + VMT2 * std::exp(-rmu2*r)/r;
+}
+
   double harmonic_oscillator(const double& m, const double& hbo, const double& r) {
     using constants::hbc;
     return 1.0/2 * m * hbo*hbo / (hbc*hbc) * r*r; // in MeV for M, hbo in MeV and r in fm
